@@ -1,0 +1,176 @@
+{
+	"version": "draft-0.1",
+	"status": "draft",
+	"note": "Noi dung ban nhap duoc chuyen tu bang tinh, chua day du va co the duoc cap nhat sau.",
+	"domains": [
+		{
+			"id": "domain-1",
+			"name": "Khai thac du lieu va thong tin",
+			"summary": "Xac dinh nhu cau thong tin, tim kiem, danh gia, quan ly va su dung du lieu/thong tin/noi dung so trong moi truong hoc tap.",
+			"competencies": [
+				{
+					"id": "1.1",
+					"name": "Duyet, tim kiem va loc du lieu, thong tin va noi dung so",
+					"levels": [
+						{
+							"level": 1,
+							"description": "O trinh do co ban va co huong dan, nguoi hoc co the xac dinh duoc nhu cau thong tin, tim kiem du lieu/thong tin/noi dung so don gian trong moi truong so.",
+							"keywords": ["nhu cau thong tin", "tim kiem co ban", "huong dan", "noi dung don gian"],
+							"advice": "Tap dat cau hoi tim kiem ro rang va luyen su dung 1-2 cong cu tim kiem voi tu khoa ngan gon."
+						},
+						{
+							"level": 2,
+							"description": "O trinh do co ban voi kha nang tu chu va huong dan phu hop, nguoi hoc co the xac dinh nhu cau thong tin, tim duoc du lieu/thong tin/noi dung so qua tim kiem don gian.",
+							"keywords": ["tu chu mot phan", "truy cap nguon", "tim kiem don gian", "dinh huong co ban"],
+							"advice": "Mo rong bo tu khoa dong nghia va so sanh ket qua giua nhieu nguon khac nhau de nang do chinh xac."
+						},
+						{
+							"level": 3,
+							"description": "Voi cac van de don gian, nguoi hoc co the tu minh giai thich duoc nhu cau thong tin va thuc hien tim du lieu/thong tin/noi dung theo quy trinh tim kiem de ra.",
+							"keywords": ["tu minh tim kiem", "quy trinh", "giai thich nhu cau", "van de don gian"],
+							"advice": "Bat dau xay dung checklist tim kiem (muc tieu, tu khoa, nguon, tieu chi loc) de tang tinh nhat quan."
+						},
+						{
+							"level": 4,
+							"description": "Duoi nhu cau rieng va voi cac van de co do phuc tap trung binh, nguoi hoc co kha nang thuc hien tim kiem du lieu/thong tin/noi dung va mo ta duoc cach trich xuat nguon du lieu phu hop.",
+							"keywords": ["van de trung binh", "trich xuat", "chien luoc tim kiem", "lua chon nguon"],
+							"advice": "Luyen tim kiem nang cao (bo loc, toan tu, khoang thoi gian) va ghi lai ly do chon/loai nguon."
+						},
+						{
+							"level": 5,
+							"description": "Khi tu minh va huong dan nguoi khac, nguoi hoc co the ap dung duoc nhieu ky thuat tim kiem trong moi truong so va chi cho nguoi khac cach truy cap/nhan dien nguon du lieu-thong tin-noi dung uy tin.",
+							"keywords": ["huong dan nguoi khac", "nhieu ky thuat", "nguon uy tin", "thuc hanh huong dan"],
+							"advice": "Phat trien bo mau huong dan tim kiem cho nhom/lop, kem vi du nguon tot va nguon can canh bao."
+						},
+						{
+							"level": 6,
+							"description": "O trinh do nang cao trong boi canh phuc tap, nguoi hoc danh gia va dieu chinh duoc chien luoc tim kiem de tim ra du lieu/thong tin/noi dung phu hop nhat cho muc tieu.",
+							"keywords": ["boi canh phuc tap", "dieu chinh chien luoc", "danh gia hieu qua", "toi uu tim kiem"],
+							"advice": "Xay dung dashboard nho de theo doi hieu qua tim kiem (do phu hop, do tin cay, toc do) va toi uu theo du lieu."
+						},
+						{
+							"level": 7,
+							"description": "O trinh do rat chuyen sau, nguoi hoc co the tao ra cac quy trinh/chuan tim kiem va loc du lieu-thong tin-noi dung cho to chuc hoac nhom.",
+							"keywords": ["chuan hoa", "quy trinh to chuc", "lan toa nang luc", "giam sat chat luong"],
+							"advice": "Thiet ke guideline cap don vi (mau tu khoa, tieu chi nguon, quy tac loc) va huan luyen nguoi dung moi."
+						},
+						{
+							"level": 8,
+							"description": "O trinh do chuyen gia cao nhat, nguoi hoc de xuat va cai tien cac chien luoc tim kiem-loc du lieu/thong tin/noi dung o quy mo he thong, xu ly cac bai toan moi va phuc tap.",
+							"keywords": ["chuyen gia", "doi moi", "quy mo he thong", "chien luoc cap cao"],
+							"advice": "Dan dat nghien cuu-thu nghiem phuong phap tim kiem moi va chuyen hoa thanh chinh sach/khung nang luc cap to chuc."
+						}
+					]
+				},
+				{
+					"id": "1.2",
+					"name": "Danh gia du lieu, thong tin va noi dung so",
+					"levels": [
+						{
+							"level": 1,
+							"description": "Nhan biet duoc su khac nhau co ban giua thong tin dang tin va thong tin khong ro nguon khi co huong dan.",
+							"keywords": ["nhan biet co ban", "nguon tin", "kiem chung so cap", "co huong dan"],
+							"advice": "Su dung 3 cau hoi nhanh: Nguon nao? Bang chung nao? Co nguon doi chieu khong?"
+						},
+						{
+							"level": 2,
+							"description": "Thuc hien so sanh thong tin tu 2-3 nguon va xac dinh duoc dau hieu co ban cua thong tin dang tin cay.",
+							"keywords": ["so sanh nguon", "dau hieu tin cay", "doi chieu", "tu chu mot phan"],
+							"advice": "Lap bang doi chieu ngan gon giua cac nguon theo tieu chi: tac gia, thoi gian, bang chung."
+						},
+						{
+							"level": 3,
+							"description": "Phan tich duoc muc do lien quan va tinh nhat quan cua du lieu/thong tin/noi dung cho mot muc tieu hoc tap cu the.",
+							"keywords": ["lien quan", "nhat quan", "phan tich", "muc tieu cu the"],
+							"advice": "Dat trong so cho tung tieu chi danh gia de xep hang nguon mot cach minh bach."
+						},
+						{
+							"level": 4,
+							"description": "Danh gia duoc do tin cay va tinh xac thuc cua nguon du lieu/thong tin/noi dung voi cac tieu chi ro rang trong boi canh thuc te.",
+							"keywords": ["do tin cay", "tinh xac thuc", "tieu chi ro rang", "boi canh thuc te"],
+							"advice": "Bo sung buoc fact-check va truy vet nguon goc du lieu truoc khi dua vao bao cao hay quyet dinh."
+						},
+						{
+							"level": 5,
+							"description": "Huong dan duoc nguoi khac cach danh gia chat luong thong tin va phong tranh sai lech trong moi truong so.",
+							"keywords": ["huong dan", "chat luong thong tin", "phong tranh sai lech", "dao tao"],
+							"advice": "Tao bo vi du thuc te ve thong tin sai/that va cach xu ly de nang cao nang luc nhom."
+						},
+						{
+							"level": 6,
+							"description": "Toi uu quy trinh danh gia du lieu thong qua ket hop chi bao dinh tinh va dinh luong cho cac bai toan phuc tap.",
+							"keywords": ["toi uu quy trinh", "dinh tinh", "dinh luong", "bai toan phuc tap"],
+							"advice": "Ung dung rubric cham diem nguon va kiem tra cheo ket qua giua cac thanh vien de giam thien lech."
+						},
+						{
+							"level": 7,
+							"description": "Xay dung duoc chuan danh gia du lieu-thong tin-noi dung so cho to chuc/nhom va theo doi muc do tuan thu.",
+							"keywords": ["chuan danh gia", "quan tri chat luong", "theo doi tuan thu", "to chuc"],
+							"advice": "Ket noi chuan danh gia vao quy trinh phe duyet noi dung va co co che audit dinh ky."
+						},
+						{
+							"level": 8,
+							"description": "Dan dat cai tien lien tuc he thong danh gia thong tin du lieu o cap chien luoc, dap ung cac ngu canh moi va rui ro moi.",
+							"keywords": ["cap chien luoc", "cai tien lien tuc", "rui ro moi", "lanh dao"],
+							"advice": "Thuc hien chu ky review quy mo lon va cap nhat framework theo xu huong cong nghe/chinh sach moi."
+						}
+					]
+				},
+				{
+					"id": "1.3",
+					"name": "Quan ly du lieu, thong tin va noi dung so",
+					"levels": [
+						{
+							"level": 1,
+							"description": "Luu tru va truy xuat duoc tep/noi dung so co ban khi duoc huong dan.",
+							"keywords": ["luu tru co ban", "truy xuat", "tep so", "co huong dan"],
+							"advice": "Dat ten tep co cau truc don gian (ngay_chu_de_phienban) va luu dung thu muc."
+						},
+						{
+							"level": 2,
+							"description": "Sap xep duoc du lieu-thong tin-noi dung so theo thu muc/nhan de de tim lai nhanh.",
+							"keywords": ["sap xep", "thu muc", "nhan", "tim lai"],
+							"advice": "Thong nhat quy tac dat ten va nhan cho toan bo tai lieu hoc tap."
+						},
+						{
+							"level": 3,
+							"description": "Quan ly duoc phien ban tai lieu va duy tri tinh nhat quan du lieu trong nhom nho.",
+							"keywords": ["phien ban", "nhat quan", "nhom nho", "dong bo"],
+							"advice": "Ap dung quy trinh versioning toi thieu va ghi chu thay doi moi lan cap nhat."
+						},
+						{
+							"level": 4,
+							"description": "To chuc du lieu theo cau truc phuc tap hon va thuc hien sao luu-phuc hoi o muc van hanh.",
+							"keywords": ["cau truc du lieu", "sao luu", "phuc hoi", "van hanh"],
+							"advice": "Dat lich backup dinh ky va kiem thu quy trinh phuc hoi de giam mat mat du lieu."
+						},
+						{
+							"level": 5,
+							"description": "Huong dan duoc nguoi khac quan ly du lieu/noi dung so, bao dam tinh san sang va kha nang chia se an toan.",
+							"keywords": ["chia se an toan", "huong dan nhom", "san sang du lieu", "phan quyen"],
+							"advice": "Thiet lap ma tran phan quyen truy cap va quy trinh cap thu hoi quyen ro rang."
+						},
+						{
+							"level": 6,
+							"description": "Toi uu hoa dong doi du lieu va tich hop nguon du lieu da dang trong boi canh phuc tap.",
+							"keywords": ["toi uu dong doi", "tich hop", "da nguon", "phuc tap"],
+							"advice": "Ap dung metadata/chuan hoa schema de lien thong du lieu giua cac he thong."
+						},
+						{
+							"level": 7,
+							"description": "Xay dung quy trinh quan tri du lieu cap nhom/to chuc va theo doi chat luong du lieu lien tuc.",
+							"keywords": ["quan tri du lieu", "chat luong du lieu", "giam sat", "to chuc"],
+							"advice": "Dat KPI chat luong du lieu va tao bao cao dinh ky de cai tien he thong quan ly."
+						},
+						{
+							"level": 8,
+							"description": "Dan dat chien luoc quan ly du lieu/noi dung so o cap cao, bao dam kha nang mo rong, bao mat va tuan thu dai han.",
+							"keywords": ["chien luoc", "mo rong", "bao mat", "tuan thu"],
+							"advice": "Ket hop governance, bao mat va tuan thu vao mot lo trinh quan tri du lieu cap to chuc."
+						}
+					]
+				}
+			]
+		}
+	]
+}

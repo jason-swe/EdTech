@@ -1,5 +1,9 @@
 import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+
+import { reviewLevelWithGemini } from '../../services/geminiService'
+import { predictCompetencyLevel } from '../../services/mlService'
+import { validateAssessmentFormInput } from '../../services/ruleEngine'
 
 type Project = {
   id: number
@@ -104,6 +108,7 @@ function Tag({ text }: { text: string }) {
 }
 
 export default function CuratorProfilePage() {
+  const navigate = useNavigate()
   const [basicInfo, setBasicInfo] = useState({
     fullName: 'Trần Hoàng Nam',
     studentId: 'B20DCCN123',
@@ -140,6 +145,81 @@ export default function CuratorProfilePage() {
 
   const updateCertificate = (id: number, key: keyof Omit<Certificate, 'id'>, value: string) => {
     setCertificates((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)))
+  }
+
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
+
+  function buildCompetencyDescription(): string {
+    const projectDescription = projects
+      .map((project) => [project.name, project.role, project.summary, project.technologies].filter(Boolean).join('. '))
+      .join('. ')
+      .trim()
+
+    if (projectDescription) {
+      return projectDescription
+    }
+
+    const certificateSummary = certificates
+      .map((item) => [item.category, item.name].filter(Boolean).join(': '))
+      .filter(Boolean)
+      .join('; ')
+
+    const fallbackParts = [
+      `${basicInfo.fullName || 'Nguoi hoc'} hien chua co du an thuc te de nop ho so nang luc.`,
+      `Thong tin hoc tap hien tai: chuyen nganh ${basicInfo.major || 'chua cap nhat'}, GPA ${basicInfo.gpa || 'chua cap nhat'}, khoa ${basicInfo.cohort || 'chua cap nhat'}.`,
+      certificateSummary
+        ? `Nguoi hoc da co cac chung chi/lien quan: ${certificateSummary}.`
+        : 'Nguoi hoc chua bo sung chung chi, nhung san sang tham gia bai danh gia de xac dinh bac nang luc hien tai.',
+      'Muc tieu: xac dinh nang luc hien tai va nhan de xuat lo trinh bo sung minh chung thuc hanh trong giai doan tiep theo.',
+    ]
+
+    return fallbackParts.join(' ')
+  }
+
+  const handleContinueToAssessment = async () => {
+    const competencyDescription = buildCompetencyDescription()
+
+    const validation = validateAssessmentFormInput({ competencyDescription })
+    if (!validation.isValid) {
+      setAnalysisError(validation.errors[0]?.message ?? 'Du lieu danh gia khong hop le.')
+      return
+    }
+
+    setAnalysisLoading(true)
+    setAnalysisError(null)
+
+    try {
+      const mlResult = predictCompetencyLevel({
+        userDescription: competencyDescription,
+        competencyId: '1.1',
+      })
+
+      const geminiResult = await reviewLevelWithGemini({
+        learnerName: basicInfo.fullName || 'Nguoi hoc',
+        userInput: competencyDescription,
+        mlResult,
+        competencyId: '1.1',
+      })
+
+      sessionStorage.setItem(
+        'curatorAssessmentResult',
+        JSON.stringify({
+          learnerName: basicInfo.fullName || 'Nguoi hoc',
+          competencyId: '1.1',
+          competencyDescription,
+          mlResult,
+          geminiResult,
+          analyzedAt: new Date().toISOString(),
+        }),
+      )
+
+      navigate('/curator-assessment')
+    } catch (error: unknown) {
+      setAnalysisError(error instanceof Error ? error.message : 'Khong the hoan tat phan tich luc nay.')
+    } finally {
+      setAnalysisLoading(false)
+    }
   }
 
   return (
@@ -462,14 +542,17 @@ export default function CuratorProfilePage() {
               </div>
             </section>
 
-            <div className="flex justify-end">
-              <Link
-                to="/curator-assessment"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#0F3E97] px-7 py-3 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,62,151,0.2)] transition-all hover:bg-[#0D3584] hover:shadow-[0_12px_24px_rgba(15,62,151,0.26)]"
+            <div className="flex flex-col items-end gap-2">
+              {analysisError ? <p className="text-xs font-semibold text-[#DC2626]">{analysisError}</p> : null}
+              <button
+                type="button"
+                disabled={analysisLoading}
+                onClick={handleContinueToAssessment}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#0F3E97] px-7 py-3 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,62,151,0.2)] transition-all hover:bg-[#0D3584] hover:shadow-[0_12px_24px_rgba(15,62,151,0.26)] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Tiếp tục bước 2
+                {analysisLoading ? 'Đang phân tích AI...' : 'Tiếp tục bước 2'}
                 <span>→</span>
-              </Link>
+              </button>
             </div>
           </div>
 

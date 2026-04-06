@@ -1,12 +1,12 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import AdminUserManagementPage from './AdminUserManagementPage/AdminUserManagementPage.tsx'
-import CuratorAssessmentPage from './CuratorAssessmentPage/CuratorAssessmentPage.tsx'
-import CuratorLearningPathPage from './CuratorLearningPathPage/CuratorLearningPathPage.tsx'
-import CuratorProfilePage from './CuratorProfilePage/CuratorProfilePage.tsx'
-import CuratorRiskMonitoringPage from './CuratorRiskMonitoringPage/CuratorRiskMonitoringPage.tsx'
-import LandingPage from './LandingPage/LandingPage'
-import LoginPage from './LoginPage/LoginPage'
-import StudentDashboardPage from './StudentDashboardPage/StudentDashboardPage.tsx'
+import AdminUserManagementPage from './features/admin-user-management/AdminUserManagementPage.tsx'
+import CuratorAssessmentPage from './features/assessment/CuratorAssessmentPage.tsx'
+import CuratorLearningPathPage from './features/learning-path/CuratorLearningPathPage.tsx'
+import CuratorProfilePage from './features/profile/CuratorProfilePage.tsx'
+import CuratorRiskMonitoringPage from './features/monitoring/CuratorRiskMonitoringPage.tsx'
+import LandingPage from './features/landing-page/LandingPage'
+import LoginPage from './features/login/LoginPage'
+import StudentDashboardPage from './features/dashboard/StudentDashboardPage.tsx'
 
 export default function App() {
   return (

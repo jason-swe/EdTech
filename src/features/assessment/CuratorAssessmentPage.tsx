@@ -1,5 +1,8 @@
-import { type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+
+import type { GeminiLevelReviewOutput, GeminiRadarScores } from '../../services/geminiService'
+import type { LevelPredictionResult } from '../../services/mlService'
 
 const sideItems = [
   {
@@ -37,7 +40,40 @@ const sideItems = [
   },
 ] as const
 
-function RadarChart() {
+function RadarChart({ scores }: { scores: GeminiRadarScores }) {
+  const centerX = 310
+  const centerY = 250
+  const maxRadius = 180
+  const axisAngles = [-90, -30, 30, 90, 150, 210]
+  const axisValues = [
+    scores.dataAndInformation,
+    scores.communicationAndCollaboration,
+    scores.digitalContentCreation,
+    scores.safety,
+    scores.problemSolving,
+    scores.aiApplication,
+  ]
+
+  const points = axisAngles
+    .map((angle, index) => {
+      const ratio = Math.max(0, Math.min(100, axisValues[index])) / 100
+      const radius = maxRadius * ratio
+      const rad = (angle * Math.PI) / 180
+      const x = centerX + radius * Math.cos(rad)
+      const y = centerY + radius * Math.sin(rad)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+
+  const pointDots = axisAngles.map((angle, index) => {
+    const ratio = Math.max(0, Math.min(100, axisValues[index])) / 100
+    const radius = maxRadius * ratio
+    const rad = (angle * Math.PI) / 180
+    const x = centerX + radius * Math.cos(rad)
+    const y = centerY + radius * Math.sin(rad)
+    return { x, y }
+  })
+
   return (
     <div className="relative mx-auto h-[430px] w-full max-w-[620px]">
       <svg viewBox="0 0 620 500" className="h-full w-full" aria-label="Biểu đồ radar năng lực số">
@@ -63,20 +99,12 @@ function RadarChart() {
 
         <circle cx="310" cy="250" r="12" fill="#A8BFE2" />
 
-        <polygon
-          points="310,117 410,192 417,312 310,394 204,311 207,191"
-          fill="rgba(29,78,216,0.30)"
-          stroke="#1E4BA5"
-          strokeWidth="3.2"
-        />
+        <polygon points={points} fill="rgba(29,78,216,0.30)" stroke="#1E4BA5" strokeWidth="3.2" />
 
         <g fill="#1E4BA5">
-          <circle cx="310" cy="117" r="6.8" />
-          <circle cx="410" cy="192" r="6.8" />
-          <circle cx="417" cy="312" r="6.8" />
-          <circle cx="310" cy="394" r="6.8" />
-          <circle cx="204" cy="311" r="6.8" />
-          <circle cx="207" cy="191" r="6.8" />
+          {pointDots.map((dot, index) => (
+            <circle key={index} cx={dot.x} cy={dot.y} r="6.8" />
+          ))}
         </g>
       </svg>
 
@@ -128,6 +156,44 @@ function InsightCard({
 }
 
 export default function CuratorAssessmentPage() {
+  const assessmentData = useMemo(() => {
+    const raw = sessionStorage.getItem('curatorAssessmentResult')
+    if (!raw) return null
+
+    try {
+      return JSON.parse(raw) as {
+        competencyDescription: string
+        competencyId: string
+        analyzedAt: string
+        mlResult: LevelPredictionResult
+        geminiResult: GeminiLevelReviewOutput
+      }
+    } catch {
+      return null
+    }
+  }, [])
+
+  const finalLevel = assessmentData?.geminiResult.finalLevel ?? 4
+  const overallScore = assessmentData?.geminiResult.overallScore ?? Math.round((finalLevel / 8) * 100)
+  const radarScores = assessmentData?.geminiResult.radarScores ?? {
+    dataAndInformation: overallScore,
+    communicationAndCollaboration: overallScore,
+    digitalContentCreation: overallScore,
+    safety: overallScore,
+    problemSolving: overallScore,
+    aiApplication: overallScore,
+  }
+
+  const strengthTitle = finalLevel >= 6 ? 'Thế mạnh: Năng lực số nâng cao' : 'Thế mạnh: Nền tảng tư duy số'
+  const strengthContent =
+    assessmentData?.geminiResult.personalizedAdvice[0] ??
+    'Bạn có nền tảng học tập ổn định. Hãy tiếp tục duy trì nhịp độ và cập nhật minh chứng năng lực định kỳ.'
+
+  const focusTitle = finalLevel <= 4 ? 'Cần chú trọng: Nâng bậc năng lực' : 'Cần chú trọng: Củng cố chiều sâu'
+  const focusContent =
+    assessmentData?.geminiResult.earlyRiskWarning ??
+    'Cần bổ sung thêm minh chứng thực hành để giảm sai lệch đánh giá và tăng độ tin cậy cho hồ sơ năng lực.'
+
   return (
     <div className="min-h-screen bg-[#E9EEF6] font-sans text-[#334155]">
       <header className="sticky top-0 z-20 border-b border-[#D7DFEC] bg-[#F7F9FD]">
@@ -211,7 +277,7 @@ export default function CuratorAssessmentPage() {
             <section>
               <h1 className="max-w-[760px] text-[2.8rem] font-black leading-[1.1] tracking-[-0.02em] text-[#0E2F6E] sm:text-[3.2rem]">
                 <span className="mr-3 inline-block bg-[#BFD9FF] px-2 py-0.5">Kết quả</span>
-                Phân tích Năng lực số sơ bộ
+                Phân tích Năng lực số từ AI
               </h1>
             </section>
 
@@ -222,20 +288,20 @@ export default function CuratorAssessmentPage() {
                     Điểm năng lực tổng quát
                   </p>
                   <p className="text-right text-[4.2rem] font-black leading-none tracking-[-0.03em] text-[#0D3C8F]">
-                    68
+                    {overallScore}
                     <span className="ml-1 text-[2.1rem] font-semibold text-[#C1C6CE]">/100</span>
                   </p>
                 </div>
                 <div className="mt-2">
-                  <RadarChart />
+                  <RadarChart scores={radarScores} />
                 </div>
               </article>
 
               <div className="space-y-6">
                 <InsightCard
                   color="#16A34A"
-                  title="Thế mạnh: Khai thác Dữ liệu"
-                  content="Hồ sơ của bạn cho thấy khả năng phân tích và quản lý dữ liệu xuất sắc từ các dự án thực tế trên GitHub."
+                  title={strengthTitle}
+                  content={strengthContent}
                   icon={
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -244,8 +310,8 @@ export default function CuratorAssessmentPage() {
                 />
                 <InsightCard
                   color="#92400E"
-                  title="Cần chú trọng: An toàn Số"
-                  content="Bạn cần bổ sung các chứng chỉ hoặc minh chứng thực hành về bảo mật và an toàn hệ thống số."
+                  title={focusTitle}
+                  content={focusContent}
                   icon={
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v2m0 4h.01M5 6h14v6c0 4.2-3 7.9-7 9-4-1.1-7-4.8-7-9V6z" />
@@ -264,7 +330,9 @@ export default function CuratorAssessmentPage() {
                 </span>
                 <div>
                   <p className="text-[1.1rem] font-semibold text-[#1E3A8A]">Sẵn sàng bước tiếp?</p>
-                  <p className="text-[0.92rem] text-[#64748B]">Chúng tôi đã phác thảo lộ trình học tập cá nhân hóa cho bạn.</p>
+                  <p className="text-[0.92rem] text-[#64748B]">
+                    {assessmentData?.geminiResult.personalizedAdvice[1] ?? 'Chung toi da phac thao lo trinh hoc tap ca nhan hoa cho ban.'}
+                  </p>
                 </div>
               </div>
 

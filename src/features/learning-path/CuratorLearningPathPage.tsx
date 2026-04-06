@@ -1,4 +1,8 @@
-import { type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+
+import type { GeminiLevelReviewOutput } from '../../services/geminiService'
+import type { LevelPredictionResult } from '../../services/mlService'
 
 const sideItems = [
   {
@@ -145,6 +149,45 @@ function StageSection({
 }
 
 export default function CuratorLearningPathPage() {
+  const assessmentData = useMemo(() => {
+    const raw = sessionStorage.getItem('curatorAssessmentResult')
+    if (!raw) return null
+
+    try {
+      return JSON.parse(raw) as {
+        competencyDescription: string
+        competencyId: string
+        analyzedAt: string
+        mlResult: LevelPredictionResult
+        geminiResult: GeminiLevelReviewOutput
+      }
+    } catch {
+      return null
+    }
+  }, [])
+
+  const finalLevel = assessmentData?.geminiResult.finalLevel ?? 4
+  const confidence = assessmentData?.geminiResult.confidenceScore ?? 0
+  const advice = assessmentData?.geminiResult.personalizedAdvice ?? []
+  const analysis = assessmentData?.geminiResult.analysis
+  const warning = assessmentData?.geminiResult.earlyRiskWarning
+  const stage2Tone: 'done' | 'progress' | 'pending' = finalLevel >= 6 ? 'done' : finalLevel >= 4 ? 'progress' : 'pending'
+  const stage2Badge = finalLevel >= 6 ? 'Giai đoạn 2 • Hoàn thành 100%' : finalLevel >= 4 ? 'Giai đoạn 2 • Đang tiến hành' : 'Giai đoạn 2 • Ưu tiên bắt đầu'
+  const stage1Title =
+    finalLevel >= 6 ? 'Nền tảng An toàn & Bảo mật nâng cao' : finalLevel >= 4 ? 'Nền tảng An toàn & Bảo mật tiêu chuẩn' : 'Nền tảng An toàn & Bảo mật cần củng cố'
+  const stage1Sub =
+    warning ??
+    'Thiết lập môi trường làm việc an toàn và xác thực danh tính học thuật.'
+  const stage3Title =
+    finalLevel >= 6 ? 'Sáng tạo & Lan tỏa Tri thức ở cấp độ cao' : 'Sáng tạo & Lan tỏa Tri thức theo nhịp cá nhân'
+  const stage3Sub =
+    advice[2] ??
+    'Xây dựng thương hiệu cá nhân trong cộng đồng học thuật và chia sẻ kết quả nghiên cứu.'
+  const stage3TaskLeft =
+    advice[0] ?? 'Thiết kế Infographic Học thuật'
+  const stage3TaskRight =
+    advice[1] ?? 'Tương tác Cộng đồng ResearchGate'
+
   return (
     <div className="min-h-screen bg-[#E9EEF6] font-sans text-[#334155]">
       <header className="sticky top-0 z-20 border-b border-[#D7DFEC] bg-[#F7F9FD]">
@@ -239,8 +282,10 @@ export default function CuratorLearningPathPage() {
                 Lộ trình Phát triển Năng lực Số
               </h1>
               <p className="mt-4 max-w-[760px] text-[0.95rem] leading-[1.7] text-[#64748B]">
-                Dựa trên kết quả đánh giá, ScholarMetric đề xuất lộ trình chi tiết giúp bạn làm chủ
-                môi trường nghiên cứu số hiện đại.
+                {analysis ?? 'Dựa trên kết quả đánh giá, ScholarMetric đề xuất lộ trình chi tiết giúp bạn làm chủ môi trường nghiên cứu số hiện đại.'}
+              </p>
+              <p className="mt-2 text-[0.78rem] text-[#94A0B2]">
+                Bậc AI xác nhận: {finalLevel} • Độ tin cậy: {(confidence * 100).toFixed(1)}%
               </p>
             </section>
 
@@ -253,8 +298,8 @@ export default function CuratorLearningPathPage() {
                 }
                 dotTone="done"
                 badge={<StageBadge label="Giai đoạn 1 • Hoàn thành 100%" tone="done" />}
-                title="Nền tảng An toàn & Bảo mật"
-                sub="Thiết lập môi trường làm việc an toàn và xác thực danh tính học thuật."
+                title={stage1Title}
+                sub={stage1Sub}
               >
                 <div className="grid gap-3 sm:grid-cols-2">
                   <TaskCard
@@ -288,10 +333,10 @@ export default function CuratorLearningPathPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M11 7v4l2.5 2.5" />
                   </svg>
                 }
-                dotTone="progress"
-                badge={<StageBadge label="Giai đoạn 2 • Đang tiến hành +15%" tone="progress" />}
-                title="Khai thác & Xử lý Dữ liệu"
-                sub="Kỹ năng truy xuất, đánh giá và quản trị nguồn học liệu số khổng lồ."
+                dotTone={stage2Tone}
+                badge={<StageBadge label={stage2Badge} tone={stage2Tone} />}
+                title={advice[0] ? `Khai thác & Xử lý Dữ liệu: ${advice[0]}` : 'Khai thác & Xử lý Dữ liệu'}
+                sub={advice[0] ?? 'Kỹ năng truy xuất, đánh giá và quản trị nguồn học liệu số khổng lồ.'}
               >
                 <div className="grid gap-3 sm:grid-cols-2">
                   <TaskCard
@@ -303,9 +348,9 @@ export default function CuratorLearningPathPage() {
                       </svg>
                     }
                     title="Module 1: Chiến thuật tìm kiếm nâng cao"
-                    subtitle="Ước tính: 4 giờ học"
-                    right="0%"
-                    highlight
+                    subtitle={advice[1] ?? 'Ước tính: 4 giờ học theo nhịp AI đề xuất'}
+                    right={finalLevel >= 6 ? '100%' : finalLevel >= 4 ? '50%' : '0%'}
+                    highlight={stage2Tone !== 'pending'}
                   />
                   <TaskCard
                     icon={
@@ -313,9 +358,9 @@ export default function CuratorLearningPathPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V8m5 8V5m5 11v-6" />
                       </svg>
                     }
-                    title="Module 2: Phân tích dữ liệu với R/Python"
-                    subtitle="Ước tính: 12 giờ học"
-                    disabled
+                    title={advice[2] ? `Module 2: ${advice[2]}` : 'Module 2: Phân tích dữ liệu với R/Python'}
+                    subtitle="Ước tính: 12 giờ học theo phân tích AI"
+                    disabled={stage2Tone === 'pending'}
                   />
                 </div>
                 <div className="rounded-xl border border-[#DCE4EF] bg-[#F9FBFE] p-4">
@@ -325,9 +370,11 @@ export default function CuratorLearningPathPage() {
                     </svg>
                     Dự án đề xuất
                   </p>
-                  <h4 className="mt-1 text-[0.95rem] font-semibold text-[#1F2937]">Hệ thống quản lý tài liệu Zotero tối ưu</h4>
+                  <h4 className="mt-1 text-[0.95rem] font-semibold text-[#1F2937]">
+                    {analysis ? 'Hệ thống quản lý tài liệu Zotero tối ưu theo AI' : 'Hệ thống quản lý tài liệu Zotero tối ưu'}
+                  </h4>
                   <p className="mt-1 text-[0.82rem] leading-[1.6] text-[#6B7280]">
-                    Xây dựng quy trình lưu trữ và đồng bộ trích dẫn cho hơn 50 bài báo học thuật chuyên ngành của bạn.
+                    {advice[2] ?? 'Xây dựng quy trình lưu trữ và đồng bộ trích dẫn cho hơn 50 bài báo học thuật chuyên ngành của bạn.'}
                   </p>
                   <p className="mt-2 text-[0.7rem] text-[#9AA5B5]">+12 ngày làm việc</p>
                 </div>
@@ -341,8 +388,8 @@ export default function CuratorLearningPathPage() {
                 }
                 dotTone="pending"
                 badge={<StageBadge label="Giai đoạn 3 • Chưa bắt đầu" tone="pending" />}
-                title="Sáng tạo & Lan tỏa Tri thức"
-                sub="Xây dựng thương hiệu cá nhân trong cộng đồng học thuật và chia sẻ kết quả nghiên cứu."
+                title={stage3Title}
+                sub={stage3Sub}
                 muted
                 showLine={false}
               >
@@ -353,8 +400,8 @@ export default function CuratorLearningPathPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 8h8M8 12h8M8 16h5" />
                       </svg>
                     }
-                    title="Thiết kế Infographic Học thuật"
-                    subtitle="Module 3"
+                    title={stage3TaskLeft}
+                    subtitle="Module 3 theo đề xuất AI"
                     disabled
                   />
                   <TaskCard
@@ -363,8 +410,8 @@ export default function CuratorLearningPathPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h8M4 7h16v10H4z" />
                       </svg>
                     }
-                    title="Tương tác Cộng đồng ResearchGate"
-                    subtitle="Module 4"
+                    title={stage3TaskRight}
+                    subtitle="Module 4 theo đề xuất AI"
                     disabled
                   />
                 </div>
@@ -373,12 +420,15 @@ export default function CuratorLearningPathPage() {
 
             <section className="space-y-4 rounded-2xl border border-[#DCE4EF] bg-white px-5 py-5 text-center sm:px-6 sm:py-6">
               <p className="text-[0.78rem] text-[#94A0B2]">
-                Hệ thống sẽ tự động mở khóa các giai đoạn tiếp theo khi bạn hoàn thành các thử thách.
+                {warning ?? 'Hệ thống sẽ tự động mở khóa các giai đoạn tiếp theo khi bạn hoàn thành các thử thách.'}
               </p>
-              <button className="inline-flex items-center gap-2 rounded-xl bg-[#0F172A] px-7 py-3 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(15,23,42,0.24)] transition-colors hover:bg-[#111827]">
+              <Link
+                to="/student-dashboard"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#0F172A] px-7 py-3 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(15,23,42,0.24)] transition-colors hover:bg-[#111827]"
+              >
                 Lưu lộ trình & Tiếp tục
                 <span>→</span>
-              </button>
+              </Link>
               <p className="text-[0.72rem] text-[#B0B8C6]">Mục tiêu của bạn có thể được tinh chỉnh bất cứ lúc nào.</p>
             </section>
           </div>

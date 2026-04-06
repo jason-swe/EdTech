@@ -1,6 +1,42 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 
-function RadarCard() {
+import type { GeminiLevelReviewOutput, GeminiRadarScores } from '../../services/geminiService'
+import type { LevelPredictionResult } from '../../services/mlService'
+
+function RadarCard({ scores }: { scores: GeminiRadarScores }) {
+  const centerX = 310
+  const centerY = 250
+  const maxRadius = 180
+  const axisAngles = [-90, -30, 30, 90, 150, 210]
+  const axisValues = [
+    scores.dataAndInformation,
+    scores.communicationAndCollaboration,
+    scores.digitalContentCreation,
+    scores.safety,
+    scores.problemSolving,
+    scores.aiApplication,
+  ]
+
+  const points = axisAngles
+    .map((angle, index) => {
+      const ratio = Math.max(0, Math.min(100, axisValues[index])) / 100
+      const radius = maxRadius * ratio
+      const rad = (angle * Math.PI) / 180
+      const x = centerX + radius * Math.cos(rad)
+      const y = centerY + radius * Math.sin(rad)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+
+  const pointDots = axisAngles.map((angle, index) => {
+    const ratio = Math.max(0, Math.min(100, axisValues[index])) / 100
+    const radius = maxRadius * ratio
+    const rad = (angle * Math.PI) / 180
+    const x = centerX + radius * Math.cos(rad)
+    const y = centerY + radius * Math.sin(rad)
+    return { x, y }
+  })
+
   return (
     <article className="rounded-[28px] bg-white p-4 shadow-[0_8px_22px_rgba(15,35,70,0.06)]">
       <div className="mb-3 flex items-center justify-between">
@@ -35,20 +71,12 @@ function RadarCard() {
 
           <circle cx="310" cy="250" r="12" fill="#A8BFE2" />
 
-          <polygon
-            points="310,117 410,192 417,312 310,394 204,311 207,191"
-            fill="rgba(29,78,216,0.30)"
-            stroke="#1E4BA5"
-            strokeWidth="3.2"
-          />
+          <polygon points={points} fill="rgba(29,78,216,0.30)" stroke="#1E4BA5" strokeWidth="3.2" />
 
           <g fill="#1E4BA5">
-            <circle cx="310" cy="117" r="6.8" />
-            <circle cx="410" cy="192" r="6.8" />
-            <circle cx="417" cy="312" r="6.8" />
-            <circle cx="310" cy="394" r="6.8" />
-            <circle cx="204" cy="311" r="6.8" />
-            <circle cx="207" cy="191" r="6.8" />
+            {pointDots.map((dot, index) => (
+              <circle key={index} cx={dot.x} cy={dot.y} r="6.8" />
+            ))}
           </g>
         </svg>
 
@@ -203,6 +231,64 @@ function StatCard({
 }
 
 export default function StudentDashboardPage() {
+  const assessmentData = useMemo(() => {
+    const raw = sessionStorage.getItem('curatorAssessmentResult')
+    if (!raw) return null
+
+    try {
+      return JSON.parse(raw) as {
+        learnerName?: string
+        competencyDescription: string
+        competencyId: string
+        analyzedAt: string
+        mlResult: LevelPredictionResult
+        geminiResult: GeminiLevelReviewOutput
+      }
+    } catch {
+      return null
+    }
+  }, [])
+
+  const finalLevel = assessmentData?.geminiResult.finalLevel ?? 4
+  const learnerName = assessmentData?.learnerName?.trim() || 'Trung'
+  const overallScore = assessmentData?.geminiResult.overallScore ?? Math.round((finalLevel / 8) * 100)
+  const radarScores = assessmentData?.geminiResult.radarScores ?? {
+    dataAndInformation: overallScore,
+    communicationAndCollaboration: overallScore,
+    digitalContentCreation: overallScore,
+    safety: overallScore,
+    problemSolving: overallScore,
+    aiApplication: overallScore,
+  }
+
+  const riskLevel: 'low' | 'medium' | 'high' = finalLevel <= 3 ? 'high' : finalLevel <= 5 ? 'medium' : 'low'
+  const riskProbability = riskLevel === 'high' ? 0.82 : riskLevel === 'medium' ? 0.48 : 0.19
+
+  const advisor = {
+    summary:
+      assessmentData?.geminiResult.analysis ??
+      'Chưa có dữ liệu AI từ trang Assessment. Vui lòng hoàn thành bước đánh giá để đồng bộ gợi ý.',
+    earlyWarning:
+      assessmentData?.geminiResult.earlyRiskWarning ??
+      'Chưa có cảnh báo sớm. Hãy cập nhật hồ sơ và hoàn tất đánh giá năng lực số.',
+    recommendedActions: assessmentData?.geminiResult.personalizedAdvice ?? [
+      'Hoàn tất bước đánh giá năng lực số để nhận lộ trình cá nhân hóa.',
+      'Bổ sung minh chứng học tập hoặc dự án gần nhất để tăng độ chính xác AI.',
+    ],
+  }
+
+  const interactionScore = Math.max(0, Math.min(100, Math.round((assessmentData?.geminiResult.confidenceScore ?? 0.82) * 100)))
+
+  const riskStatusLabel = riskLevel === 'high' ? 'Nguy cơ cao' : riskLevel === 'medium' ? 'Cần theo dõi' : 'An toàn'
+  const riskHint =
+    assessmentData?.geminiResult.earlyRiskWarning ??
+    (riskLevel === 'high'
+      ? 'Cần kích hoạt cảnh báo sớm trong 72 giờ'
+      : riskLevel === 'medium'
+        ? 'Có dấu hiệu rủi ro học tập, cần theo dõi'
+        : 'Xác suất rủi ro học tập cực thấp')
+  const riskChip = riskLevel === 'high' ? 'Mức cao' : riskLevel === 'medium' ? 'Mức trung bình' : 'Đang an toàn'
+
   return (
     <div className="min-h-screen bg-[#ECEFF4]">
       <div className="w-full overflow-hidden bg-[#F5F8FC]">
@@ -248,7 +334,7 @@ export default function StudentDashboardPage() {
 
               <div className="flex items-center gap-2.5">
                 <div className="text-right leading-tight">
-                  <p className="text-[0.84rem] font-semibold text-[#0F172A]">Trung Nguyen</p>
+                  <p className="text-[0.84rem] font-semibold text-[#0F172A]">{learnerName}</p>
                   <p className="mt-1 text-[0.7rem] text-[#64748B]">Thành viên</p>
                 </div>
                 <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#D9E2EF] bg-[#0F3F95] shadow-[0_4px_10px_rgba(15,63,149,0.2)]">
@@ -343,7 +429,7 @@ export default function StudentDashboardPage() {
           <main className="h-full flex-1 overflow-y-auto bg-[#F3F6FB] px-4 py-4">
             <div className="mb-4">
               <div>
-                <h1 className="text-[1.75rem] font-black tracking-[-0.02em] text-[#1F2937]">Chào mừng trở lại, Trung! 👋</h1>
+                <h1 className="text-[1.75rem] font-black tracking-[-0.02em] text-[#1F2937]">Chào mừng trở lại, {learnerName}! 👋</h1>
                 <p className="mt-1 text-[0.82rem] text-[#64748B]">Bạn đã hoàn thành 85% mục tiêu tuần. <span className="font-semibold text-[#16A34A]">Đang dẫn đầu lớp!</span></p>
               </div>
             </div>
@@ -351,8 +437,8 @@ export default function StudentDashboardPage() {
             <div className="grid grid-cols-3 gap-3">
               <StatCard
                 title="Điểm tổng kết"
-                value="78/100"
-                hint="↗ +6.2% tháng này"
+                value={`${overallScore}/100`}
+                hint={`AI đánh giá năng lực bậc ${finalLevel}`}
                 chip="Cập nhật mới"
                 accentClassName="bg-gradient-to-br from-white to-[#F8FBFF]"
                 iconWrapperClassName="bg-[#EEF4FF] text-[#2C63F1]"
@@ -361,8 +447,8 @@ export default function StudentDashboardPage() {
                 title="Trạng thái rủi ro"
                 value={
                   <span>
-                    <span className="mr-1 text-[#16A34A]">•</span>
-                    An toàn
+                    <span className={`mr-1 ${riskLevel === 'high' ? 'text-[#DC2626]' : riskLevel === 'medium' ? 'text-[#D97706]' : 'text-[#16A34A]'}`}>•</span>
+                    {riskStatusLabel}
                   </span>
                 }
                 iconWrapperClassName="bg-[#E7F6F1] text-[#0E9B6C]"
@@ -373,14 +459,14 @@ export default function StudentDashboardPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
                   </svg>
                 }
-                progress={15}
-                hint="Xác suất rủi ro học tập cực thấp"
-                chip="Đang an toàn"
+                progress={Math.round(riskProbability * 100)}
+                hint={riskHint}
+                chip={riskChip}
               />
               <StatCard
                 title="Mức độ tương tác"
-                value="92%"
-                hint="Top 5% toàn hệ thống"
+                value={`${interactionScore}%`}
+                hint="Độ tin cậy của đánh giá AI"
                 iconWrapperClassName="bg-[#ECEFF4] text-[#2A73E8]"
                 accentClassName="bg-gradient-to-br from-white to-[#F7F9FF]"
                 chip="Tăng trưởng"
@@ -394,7 +480,7 @@ export default function StudentDashboardPage() {
 
             <div className="mt-4 grid grid-cols-[2.35fr_0.65fr] gap-3">
               <div className="space-y-3">
-                <RadarCard />
+                <RadarCard scores={radarScores} />
                 <HistoryCard />
               </div>
 
@@ -431,16 +517,20 @@ export default function StudentDashboardPage() {
 
                   <div className="mt-4 rounded-[18px] border border-white/12 bg-white/8 px-3 py-3 text-[0.76rem] leading-[1.6] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
                     <p>
-                      Chào Trung! Dựa trên ma trận năng lực, bạn đang ở mức <span className="font-semibold text-white">Expert</span> về Sáng tạo nội dung.
+                      {advisor?.summary ?? 'Đang tổng hợp phân tích cá nhân hóa theo dữ liệu mới nhất...'}
                     </p>
                     <p className="mt-4">
-                      Gợi ý: Hãy tập trung vào <span className="font-semibold text-white">Bảo mật hệ thống</span> để cân bằng hồ sơ số.
+                      Cảnh báo sớm: <span className="font-semibold text-white">{advisor?.earlyWarning ?? 'Đang đánh giá mức độ can thiệp phù hợp.'}</span>
                     </p>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-1.5 text-[0.65rem] font-semibold">
-                    <button className="rounded-lg bg-white/10 px-2.5 py-1.5 text-white/95">Lộ trình Bảo mật là gì?</button>
-                    <button className="rounded-lg bg-white/10 px-2.5 py-1.5 text-white/95">So sánh với lớp</button>
+                    <button className="rounded-lg bg-white/10 px-2.5 py-1.5 text-white/95">
+                      {advisor?.recommendedActions[0] ?? 'Đang tạo gợi ý số 1...'}
+                    </button>
+                    <button className="rounded-lg bg-white/10 px-2.5 py-1.5 text-white/95">
+                      {advisor?.recommendedActions[1] ?? 'Đang tạo gợi ý số 2...'}
+                    </button>
                   </div>
 
                   <div className="mt-auto pt-10">
