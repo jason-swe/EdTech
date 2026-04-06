@@ -29,13 +29,21 @@ UPDATING
 
 
 
-Tech Stack 
-Frontend: React, UPDATING
+## Tech Stack
 
-Backend: Node.js + Express (Gemini proxy API)
+- Frontend: React 19, TypeScript, Vite
+- Styling: Tailwind CSS 4
+- Routing: React Router DOM
+- Backend: Express 5
+- AI / Data Processing: Gemini API integration via service layer, plus string-similarity for content matching
+- Environment Management: dotenv
 
-Database: ...
+## Development Tools
 
+- ESLint
+- TypeScript
+- Vite build and preview
+- npm scripts for local development and server development
 
 
 
@@ -83,7 +91,7 @@ TODO
 		"levels": []
 	},
 	"options": {
-		"model": "gemini-2.0-flash"
+		"model": "gemini-2.5-flash"
 	}
 }
 ```
@@ -93,7 +101,7 @@ TODO
 ```json
 {
 	"ok": true,
-	"model": "gemini-2.0-flash",
+	"model": "gemini-2.5-flash",
 	"data": {
 		"recommendedLevel": "L3",
 		"reasoning": [],
