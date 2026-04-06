@@ -18,7 +18,7 @@ export function Navbar() {
           to="/"
           className="shrink-0 text-[0.95rem] font-bold tracking-tight text-[#003380] transition-opacity hover:opacity-90 sm:text-[1rem]"
         >
-          EdTechEnthusiasts
+          EdTech Enthusiasts
         </Link>
 
         <nav

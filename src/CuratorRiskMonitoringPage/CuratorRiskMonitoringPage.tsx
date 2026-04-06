@@ -104,7 +104,7 @@ export default function CuratorRiskMonitoringPage() {
                   </svg>
                 </span>
                 <div>
-                  <p className="text-[1.45rem] font-bold leading-none text-[#12439A]">DC Pro</p>
+                  <p className="text-[0.95rem] font-bold leading-none text-[#154391]">EdTech Enthusiasts</p>
                   <p className="text-[0.55rem] font-semibold uppercase tracking-[0.13em] text-[#6B7B91]">Curator học thuật</p>
                 </div>
               </div>

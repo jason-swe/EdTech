@@ -39,40 +39,66 @@ const sideItems = [
 
 function RadarChart() {
   return (
-    <svg viewBox="0 0 330 280" className="mx-auto h-[285px] w-full max-w-[360px]" aria-label="Biểu đồ radar năng lực số">
-      <g fill="none" stroke="#DBE3EE">
-        <polygon points="165,37 243,82 243,172 165,218 87,172 87,82" />
-        <polygon points="165,61 222,94 222,160 165,192 108,160 108,94" />
-        <polygon points="165,84 202,106 202,147 165,170 128,147 128,106" />
-        <polygon points="165,106 184,116 184,136 165,147 146,136 146,116" />
-      </g>
+    <div className="relative mx-auto h-[430px] w-full max-w-[620px]">
+      <svg viewBox="0 0 620 500" className="h-full w-full" aria-label="Biểu đồ radar năng lực số">
+        <g fill="none" stroke="#DCE3ED">
+          <circle cx="310" cy="250" r="180" />
+          <circle cx="310" cy="250" r="157.5" />
+          <circle cx="310" cy="250" r="135" />
+          <circle cx="310" cy="250" r="112.5" />
+          <circle cx="310" cy="250" r="90" />
+          <circle cx="310" cy="250" r="67.5" />
+          <circle cx="310" cy="250" r="45" />
+          <circle cx="310" cy="250" r="22.5" />
+        </g>
 
-      <g stroke="#D8E0EC" strokeWidth="1">
-        <line x1="165" y1="37" x2="165" y2="218" />
-        <line x1="243" y1="82" x2="87" y2="172" />
-        <line x1="243" y1="172" x2="87" y2="82" />
-      </g>
+        <g stroke="#D2DCE9" strokeWidth="1">
+          <line x1="310" y1="250" x2="310" y2="70" />
+          <line x1="310" y1="250" x2="466" y2="160" />
+          <line x1="310" y1="250" x2="466" y2="340" />
+          <line x1="310" y1="250" x2="310" y2="430" />
+          <line x1="310" y1="250" x2="154" y2="340" />
+          <line x1="310" y1="250" x2="154" y2="160" />
+        </g>
 
-      <polygon
-        points="165,74 214,104 208,154 165,180 118,156 122,105"
-        fill="rgba(28,79,171,0.16)"
-        stroke="#0E3A8A"
-        strokeWidth="3"
-      />
+        <circle cx="310" cy="250" r="12" fill="#A8BFE2" />
 
-      <g fill="#475569" fontSize="10" fontWeight="600" textAnchor="middle">
-        <text x="165" y="24">KHAI THÁC DỮ LIỆU</text>
-        <text x="257" y="88">GIAO TIẾP VÀ HỢP</text>
-        <text x="257" y="100">TÁC TRONG KỶ NGUYÊN SỐ</text>
-        <text x="236" y="196">SÁNG TẠO</text>
-        <text x="236" y="208">NỘI DUNG SỐ</text>
-        <text x="165" y="238">AN TOÀN</text>
-        <text x="95" y="196">GIẢI QUYẾT</text>
-        <text x="95" y="208">VẤN ĐỀ</text>
-        <text x="74" y="88">ỨNG DỤNG</text>
-        <text x="74" y="100">TRÍ TUỆ NHÂN TẠO</text>
-      </g>
-    </svg>
+        <polygon
+          points="310,117 410,192 417,312 310,394 204,311 207,191"
+          fill="rgba(29,78,216,0.30)"
+          stroke="#1E4BA5"
+          strokeWidth="3.2"
+        />
+
+        <g fill="#1E4BA5">
+          <circle cx="310" cy="117" r="6.8" />
+          <circle cx="410" cy="192" r="6.8" />
+          <circle cx="417" cy="312" r="6.8" />
+          <circle cx="310" cy="394" r="6.8" />
+          <circle cx="204" cy="311" r="6.8" />
+          <circle cx="207" cy="191" r="6.8" />
+        </g>
+      </svg>
+
+      <span className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
+        KHAI THÁC DỮ LIỆU VÀ THÔNG TIN
+      </span>
+      <span className="absolute right-0 top-[132px] rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
+        GIAO TIẾP VÀ HỢP TÁC TRONG MÔI TRƯỜNG SỐ
+      </span>
+      <span className="absolute right-2 bottom-[106px] rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
+        SÁNG TẠO NỘI DUNG SỐ
+      </span>
+      <span className="absolute left-1/2 bottom-1 -translate-x-1/2 rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold text-[#4B5563]">
+        AN TOÀN
+      </span>
+      <span className="absolute left-0 bottom-[106px] rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
+        GIẢI QUYẾT VẤN ĐỀ
+      </span>
+      <span className="absolute left-0 top-[132px] rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
+        ỨNG DỤNG TRÍ TUỆ NHÂN TẠO
+      </span>
+    </div>
   )
 }
 

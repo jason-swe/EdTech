@@ -5,14 +5,10 @@ type NavItem = {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Bảng điều khiển học viên', section: 'main' },
-  { label: 'Đánh giá', section: 'main' },
-  { label: 'Giám sát rủi ro', section: 'main' },
-  { label: 'Lộ trình học tập', section: 'main' },
   { label: 'Bảng điều khiển quản trị', section: 'admin' },
   { label: 'Quản lý can thiệp', section: 'admin' },
   { label: 'Quản lý người dùng', section: 'admin', active: true },
-  { label: 'Quản lý dữ liệu học tập', section: 'admin' },
+  { label: 'Quản lý rủi ro', section: 'admin' },
 ]
 
 type UserRow = {
@@ -87,30 +83,8 @@ export default function AdminUserManagementPage() {
               </svg>
             </span>
             <div>
-              <p className="text-[1.85rem] font-bold leading-none tracking-[-0.03em] text-[#17479F]">DC Pro</p>
+              <p className="text-[0.95rem] font-bold leading-none text-[#154391]">EdTech Enthusiasts</p>
               <p className="mt-1 text-[0.62rem] uppercase tracking-[0.08em] text-[#73859E]">Curator học thuật</p>
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <p className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-[#8A9AB0]">Tổng quan</p>
-            <div className="space-y-1">
-              {navItems
-                .filter((item) => item.section === 'main')
-                .map((item) => (
-                  <button
-                    key={item.label}
-                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[0.78rem] ${
-                      item.active
-                        ? 'bg-white font-semibold text-[#1D4BA5] shadow-[0_4px_10px_rgba(15,35,70,0.08)]'
-                        : 'text-[#65788F] hover:bg-white/65'
-                    }`}
-                  >
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-current/80" />
-                    <span className="truncate">{item.label}</span>
-                    {item.active ? <span className="ml-auto h-4 w-[2px] rounded-full bg-[#1D4BA5]" aria-hidden /> : null}
-                  </button>
-                ))}
             </div>
           </div>
 

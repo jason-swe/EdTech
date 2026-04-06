@@ -16,14 +16,6 @@ type Certificate = {
   fileName: string
 }
 
-type Education = {
-  id: number
-  school: string
-  major: string
-  gpa: string
-  graduationYear: string
-}
-
 const sideItems = [
   {
     label: 'Thông tin cá nhân',
@@ -116,7 +108,10 @@ export default function CuratorProfilePage() {
     fullName: 'Trần Hoàng Nam',
     studentId: 'B20DCCN123',
     cohort: 'Công nghệ thông tin 1',
+    school: 'Học viện Công nghệ Bưu chính Viễn thông',
     major: 'Kỹ thuật phần mềm',
+    gpa: '3.67 / 4.0',
+    graduationYear: '2027',
   })
 
   const [projects, setProjects] = useState<Project[]>([
@@ -139,26 +134,12 @@ export default function CuratorProfilePage() {
     },
   ])
 
-  const [educations, setEducations] = useState<Education[]>([
-    {
-      id: 1,
-      school: 'Học viện Công nghệ Bưu chính Viễn thông',
-      major: 'Kỹ thuật phần mềm',
-      gpa: '3.67 / 4.0',
-      graduationYear: '2027',
-    },
-  ])
-
   const updateProject = (id: number, key: keyof Omit<Project, 'id'>, value: string) => {
     setProjects((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)))
   }
 
   const updateCertificate = (id: number, key: keyof Omit<Certificate, 'id'>, value: string) => {
     setCertificates((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)))
-  }
-
-  const updateEducation = (id: number, key: keyof Omit<Education, 'id'>, value: string) => {
-    setEducations((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)))
   }
 
   return (
@@ -243,7 +224,7 @@ export default function CuratorProfilePage() {
           <div className="mx-auto max-w-[1060px] space-y-9 p-5 sm:p-8 lg:p-9">
             <section>
               <SectionHeader
-                title="Thông tin cơ bản"
+                title="Thông tin cơ bản & học vấn"
                 icon={
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path
@@ -271,9 +252,24 @@ export default function CuratorProfilePage() {
                   onChange={(nextValue) => setBasicInfo((prev) => ({ ...prev, cohort: nextValue }))}
                 />
                 <Field
+                  label="Trường"
+                  value={basicInfo.school}
+                  onChange={(nextValue) => setBasicInfo((prev) => ({ ...prev, school: nextValue }))}
+                />
+                <Field
                   label="Chuyên ngành"
                   value={basicInfo.major}
                   onChange={(nextValue) => setBasicInfo((prev) => ({ ...prev, major: nextValue }))}
+                />
+                <Field
+                  label="GPA hiện tại"
+                  value={basicInfo.gpa}
+                  onChange={(nextValue) => setBasicInfo((prev) => ({ ...prev, gpa: nextValue }))}
+                />
+                <Field
+                  label="Năm tốt nghiệp dự kiến"
+                  value={basicInfo.graduationYear}
+                  onChange={(nextValue) => setBasicInfo((prev) => ({ ...prev, graduationYear: nextValue }))}
                 />
               </div>
               <div className="mt-4 flex flex-wrap gap-2.5">
@@ -282,7 +278,17 @@ export default function CuratorProfilePage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBasicInfo({ fullName: '', studentId: '', cohort: '', major: '' })}
+                  onClick={() =>
+                    setBasicInfo({
+                      fullName: '',
+                      studentId: '',
+                      cohort: '',
+                      school: '',
+                      major: '',
+                      gpa: '',
+                      graduationYear: '',
+                    })
+                  }
                   className="rounded-lg border border-[#D5DEEB] bg-white px-4 py-2 text-sm font-semibold text-[#52617A]"
                 >
                   Xóa trắng
@@ -440,69 +446,6 @@ export default function CuratorProfilePage() {
                   className="h-10 rounded-xl bg-[#EEF2F7] px-5 text-sm font-semibold text-[#33538F] transition-colors hover:bg-[#E5ECF7]"
                 >
                   + Thêm chứng chỉ khác
-                </button>
-              </div>
-            </section>
-
-            <section>
-              <SectionHeader
-                title="Học vấn"
-                icon={
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422A12.083 12.083 0 0112 20.055a12.083 12.083 0 01-6.16-9.477L12 14z" />
-                  </svg>
-                }
-              />
-
-              <div className="space-y-4">
-                {educations.map((education) => (
-                  <div key={education.id} className="rounded-2xl bg-white p-5 sm:p-6">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <Field
-                        label="Trường"
-                        value={education.school}
-                        onChange={(nextValue) => updateEducation(education.id, 'school', nextValue)}
-                      />
-                      <Field
-                        label="Chuyên ngành"
-                        value={education.major}
-                        onChange={(nextValue) => updateEducation(education.id, 'major', nextValue)}
-                      />
-                      <Field
-                        label="GPA hiện tại"
-                        value={education.gpa}
-                        onChange={(nextValue) => updateEducation(education.id, 'gpa', nextValue)}
-                      />
-                      <Field
-                        label="Năm tốt nghiệp dự kiến"
-                        value={education.graduationYear}
-                        onChange={(nextValue) => updateEducation(education.id, 'graduationYear', nextValue)}
-                      />
-                    </div>
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setEducations((prev) => prev.filter((item) => item.id !== education.id))}
-                        className="rounded-lg bg-[#EEF2F7] px-3 py-1.5 text-xs font-semibold text-[#586782]"
-                      >
-                        Xóa học vấn
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEducations((prev) => [
-                      ...prev,
-                      { id: Date.now(), school: '', major: '', gpa: '', graduationYear: '' },
-                    ])
-                  }
-                  className="h-10 rounded-xl bg-[#EEF2F7] px-5 text-sm font-semibold text-[#33538F] transition-colors hover:bg-[#E5ECF7]"
-                >
-                  + Thêm học vấn
                 </button>
               </div>
             </section>
