@@ -17,20 +17,41 @@ type FrameworkLevel = {
   level: number
   description: string
   advice?: string
+  keywords?: string[]
 }
 
 type FrameworkCompetency = {
   id: string
   name: string
+  description?: string
   levels: FrameworkLevel[]
 }
 
 type FrameworkDomain = {
+  id?: string
+  name?: string
+  summary?: string
   competencies: FrameworkCompetency[]
 }
 
 type FrameworkDocument = {
   domains?: FrameworkDomain[]
+}
+
+export type GeminiRoadmapStep = {
+  step?: number
+  target_level?: number
+  action_items?: string[]
+  focus_keywords?: string[]
+}
+
+export type GeminiAssessmentSchema = {
+  assessment?: {
+    current_level?: number
+    summary?: string
+  }
+  roadmap?: GeminiRoadmapStep[]
+  mentor_advice?: string
 }
 
 export type GeminiLevelReviewInput = {
@@ -57,6 +78,9 @@ export type GeminiLevelReviewOutput = {
   analysis: string
   personalizedAdvice: string[]
   earlyRiskWarning: string
+  assessment?: GeminiAssessmentSchema['assessment']
+  roadmap?: GeminiRoadmapStep[]
+  mentorAdvice?: string
   source: 'live' | 'fallback'
   reason?: string
 }
@@ -78,8 +102,20 @@ type GeminiApiErrorResponse = {
   }
 }
 
+const inFlightReviewRequests = new Map<string, Promise<GeminiLevelReviewOutput>>()
+const recentReviewResults = new Map<string, { at: number; result: GeminiLevelReviewOutput }>()
+const REVIEW_CACHE_TTL_MS = 12000
+
 const SYSTEM_PROMPT_TEMPLATE =
-  'Ban la chuyen gia tham dinh nang luc so. Dua tren du bao cua lop ML la Bac X, hay phan tich sau hon van ban cua nguoi dung de xac nhan bac cuoi cung. Sau do, dua tren file @framework.json, hay dua ra 3 loi khuyen ca nhan hoa va 1 canh bao rui ro som.'
+  [
+    'Ban la Chuyen gia Danh gia Nang luc va Kien tao Lo trinh Hoc tap (Learning Path Architect).',
+    'Nhiem vu: dua tren framework, phan tich mo ta cua nguoi hoc de xac dinh bac nang luc hien tai.',
+    'Quy tac bat buoc:',
+    '- Moi ket luan phai doi chieu tu domains, competencies, levels trong framework.',
+    '- Khong tu y tao bac hoc moi, ky nang moi, hay noi dung ngoai framework.',
+    '- Lo trinh thang tien phai dua tren advice va keywords trong framework.',
+    '- Tra ve DUY NHAT JSON hop le theo dung schema yeu cau, khong chen markdown, khong chen van ban ngoai JSON.',
+  ].join('\n')
 
 function clampLevel(level: number): GeminiLevelReviewOutput['finalLevel'] {
   if (level < 1) return 1
@@ -137,9 +173,27 @@ function getFrameworkLevels(competencyId?: string): FrameworkLevel[] {
   return competency?.levels ?? []
 }
 
+function getFrameworkCompetency(competencyId?: string): FrameworkCompetency | null {
+  if (!competencyId) return null
+
+  const framework = frameworkData as FrameworkDocument
+  const competencies = (framework.domains ?? []).flatMap((domain) => domain.competencies ?? [])
+  return competencies.find((item) => item.id === competencyId) ?? null
+}
+
+function extractRoadmapAdvice(roadmap: GeminiRoadmapStep[] | undefined, fallback: string[]): string[] {
+  if (!Array.isArray(roadmap)) {
+    return fallback
+  }
+
+  const actions = roadmap
+    .flatMap((item) => (Array.isArray(item.action_items) ? item.action_items : []))
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+
+  return actions.length > 0 ? actions.slice(0, 3) : fallback
+}
+
 function buildFallbackReview(input: GeminiLevelReviewInput): GeminiLevelReviewOutput {
-  const levels = getFrameworkLevels(input.competencyId)
-  const matchedLevel = levels.find((item) => item.level === input.mlResult.predictedLevel)
   const radarScores = buildFallbackRadarScores(input.mlResult.predictedLevel)
 
   return {
@@ -147,13 +201,15 @@ function buildFallbackReview(input: GeminiLevelReviewInput): GeminiLevelReviewOu
     confidenceScore: clampConfidence(input.mlResult.confidenceScore),
     overallScore: clampScore((input.mlResult.predictedLevel / 8) * 100),
     radarScores,
-    analysis: `He thong dang su dung ket qua ML de tam xac nhan Bac ${input.mlResult.predictedLevel}. Nen bo sung API key Gemini de co phan tich sau hon.`,
-    personalizedAdvice: [
-      matchedLevel?.advice ?? 'Dat muc tieu nang luc ro rang cho 2 tuan toi va theo doi tien do hang ngay.',
-      'Bo sung minh chung thuc hanh cu the de nang cao do tin cay khi tham dinh nang luc.',
-      'Thuc hien phan hoi dinh ky voi co van de dieu chinh lo trinh hoc tap phu hop.',
-    ],
-    earlyRiskWarning: 'Neu khong cap nhat minh chung hoc tap trong 7 ngay, nguy co sai lech danh gia se tang.',
+    analysis: '',
+    personalizedAdvice: [],
+    earlyRiskWarning: '',
+    assessment: {
+      current_level: clampLevel(input.mlResult.predictedLevel),
+      summary: '',
+    },
+    roadmap: [],
+    mentorAdvice: '',
     source: 'fallback',
     reason: 'Gemini unavailable or API key missing.',
   }
@@ -161,7 +217,35 @@ function buildFallbackReview(input: GeminiLevelReviewInput): GeminiLevelReviewOu
 
 function parseGeminiReview(rawText: string, fallback: GeminiLevelReviewOutput): GeminiLevelReviewOutput {
   try {
-    const parsed = JSON.parse(rawText) as Partial<GeminiLevelReviewOutput>
+    const parsed = JSON.parse(rawText) as Partial<GeminiLevelReviewOutput> & GeminiAssessmentSchema
+
+    if (parsed.assessment) {
+      const levelFromAssessment =
+        typeof parsed.assessment.current_level === 'number' ? clampLevel(parsed.assessment.current_level) : fallback.finalLevel
+
+      const roadmapAdvice = extractRoadmapAdvice(parsed.roadmap, fallback.personalizedAdvice)
+      const assessmentSummary =
+        typeof parsed.assessment.summary === 'string' && parsed.assessment.summary.trim()
+          ? parsed.assessment.summary
+          : fallback.analysis
+
+      return {
+        finalLevel: levelFromAssessment,
+        confidenceScore: fallback.confidenceScore,
+        overallScore: clampScore((levelFromAssessment / 8) * 100),
+        radarScores: buildFallbackRadarScores(levelFromAssessment),
+        analysis: assessmentSummary,
+        personalizedAdvice: roadmapAdvice,
+        earlyRiskWarning:
+          typeof parsed.mentor_advice === 'string' && parsed.mentor_advice.trim()
+            ? parsed.mentor_advice
+            : '',
+        assessment: parsed.assessment,
+        roadmap: Array.isArray(parsed.roadmap) ? parsed.roadmap : [],
+        mentorAdvice: typeof parsed.mentor_advice === 'string' ? parsed.mentor_advice : '',
+        source: 'live',
+      }
+    }
 
     const personalizedAdvice = Array.isArray(parsed.personalizedAdvice)
       ? parsed.personalizedAdvice.filter((item): item is string => typeof item === 'string').slice(0, 3)
@@ -173,14 +257,14 @@ function parseGeminiReview(rawText: string, fallback: GeminiLevelReviewOutput): 
       overallScore: clampScore(typeof parsed.overallScore === 'number' ? parsed.overallScore : fallback.overallScore),
       radarScores: normalizeRadarScores(parsed.radarScores, fallback.radarScores),
       analysis: typeof parsed.analysis === 'string' && parsed.analysis.trim() ? parsed.analysis : fallback.analysis,
-      personalizedAdvice:
-        personalizedAdvice.length === 3
-          ? personalizedAdvice
-          : [...personalizedAdvice, ...fallback.personalizedAdvice].slice(0, 3),
+      personalizedAdvice,
       earlyRiskWarning:
         typeof parsed.earlyRiskWarning === 'string' && parsed.earlyRiskWarning.trim()
           ? parsed.earlyRiskWarning
-          : fallback.earlyRiskWarning,
+          : '',
+      assessment: fallback.assessment,
+      roadmap: fallback.roadmap,
+      mentorAdvice: '',
       source: 'live',
     }
   } catch {
@@ -189,100 +273,152 @@ function parseGeminiReview(rawText: string, fallback: GeminiLevelReviewOutput): 
 }
 
 export async function reviewLevelWithGemini(input: GeminiLevelReviewInput): Promise<GeminiLevelReviewOutput> {
-  const fallback = buildFallbackReview(input)
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  const model = (import.meta.env.VITE_GEMINI_MODEL as string | undefined) ?? 'gemini-2.5-flash'
+  const requestKey = JSON.stringify({
+    learnerName: input.learnerName ?? '',
+    competencyId: input.competencyId ?? '',
+    userInput: input.userInput,
+    predictedLevel: input.mlResult.predictedLevel,
+    confidenceScore: input.mlResult.confidenceScore,
+  })
 
-  if (!apiKey) {
-    return {
-      ...fallback,
-      reason: 'Missing VITE_GEMINI_API_KEY.',
-    }
+  const recent = recentReviewResults.get(requestKey)
+  if (recent && Date.now() - recent.at <= REVIEW_CACHE_TTL_MS) {
+    return recent.result
   }
 
-  const frameworkLevels = getFrameworkLevels(input.competencyId)
-  const frameworkContext = frameworkLevels
-    .map((level) => `Bac ${level.level}: ${level.description}`)
-    .join('\n')
+  const inFlight = inFlightReviewRequests.get(requestKey)
+  if (inFlight) {
+    return inFlight
+  }
 
-  const systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace('Bac X', `Bac ${input.mlResult.predictedLevel}`)
-  const userPrompt = [
-    `Ten nguoi hoc: ${input.learnerName ?? 'Nguoi hoc'}`,
-    `Du bao ML: Bac ${input.mlResult.predictedLevel}, confidence ${input.mlResult.confidenceScore}`,
-    `Van ban nguoi dung: ${input.userInput}`,
-    'Khung tham chieu tu framework:',
-    frameworkContext || 'Chua co du lieu framework cho nang luc nay.',
-    'Hay tra ve JSON voi schema:',
-    '{"finalLevel": number, "confidenceScore": number, "overallScore": number, "radarScores": {"dataAndInformation": number, "communicationAndCollaboration": number, "digitalContentCreation": number, "safety": number, "problemSolving": number, "aiApplication": number}, "analysis": string, "personalizedAdvice": [string, string, string], "earlyRiskWarning": string}',
-    'Rang buoc: overallScore va radarScores la so nguyen trong khoang 0..100.',
-  ].join('\n\n')
+  const task = (async () => {
+    const fallback = buildFallbackReview(input)
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
+    const configuredModel = (import.meta.env.VITE_GEMINI_MODEL as string | undefined)?.trim()
+    const modelCandidates = [configuredModel || 'gemini-2.5-pro', 'gemini-2.5-pro', 'gemini-2.5-flash'].filter(
+      (item, index, list) => !!item && list.indexOf(item) === index,
+    ) as string[]
+
+    if (!apiKey) {
+      return {
+        ...fallback,
+        reason: 'Missing VITE_GEMINI_API_KEY.',
+      }
+    }
+
+    const frameworkLevels = getFrameworkLevels(input.competencyId)
+    const frameworkCompetency = getFrameworkCompetency(input.competencyId)
+    const frameworkContext = frameworkLevels
+      .map((level) => {
+        const keywords = Array.isArray(level.keywords) && level.keywords.length > 0 ? ` | keywords: ${level.keywords.join(', ')}` : ''
+        const advice = level.advice?.trim() ? ` | advice: ${level.advice}` : ''
+        return `Bac ${level.level}: ${level.description}${keywords}${advice}`
+      })
+      .join('\n')
+
+    const systemPrompt = SYSTEM_PROMPT_TEMPLATE
+    const userPrompt = [
+      `Ten nguoi hoc: ${input.learnerName ?? 'Nguoi hoc'}`,
+      `Du bao ML: Bac ${input.mlResult.predictedLevel}, confidence ${input.mlResult.confidenceScore}`,
+      `Nang luc tham chieu: ${frameworkCompetency?.id ?? input.competencyId ?? 'chua xac dinh'} - ${frameworkCompetency?.name ?? 'Khong tim thay competency trong framework'}`,
+      frameworkCompetency?.description ? `Mo ta nang luc: ${frameworkCompetency.description}` : 'Mo ta nang luc: khong co du lieu.',
+      `Van ban nguoi dung: ${input.userInput}`,
+      'Khung tham chieu tu framework:',
+      frameworkContext || 'Chua co du lieu framework cho nang luc nay.',
+      'Dinh dang tra ve BAT BUOC (JSON nguyen khoi):',
+      '{"assessment":{"current_level":number,"summary":"string"},"roadmap":[{"step":number,"target_level":number,"action_items":["string"],"focus_keywords":["string"]}],"mentor_advice":"string"}',
+      'Rang buoc bo sung:',
+      '- current_level phai la so nguyen 1..8.',
+      '- roadmap la danh sach buoc nang bac tu muc hien tai len muc cao hon hop ly.',
+      '- action_items va focus_keywords phai bam sat framework, uu tien lay tu advice va keywords.',
+      '- Khong duoc tra ve bat ky truong nao khac ngoai schema tren.',
+    ].join('\n\n')
+
+    try {
+      for (const model of modelCandidates) {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemPrompt }],
+            },
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: userPrompt }],
+              },
+            ],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+            },
+          }),
+        })
+
+        if (!response.ok) {
+          const errorPayload = (await response.json().catch(() => null)) as GeminiApiErrorResponse | null
+          const errorMessage = errorPayload?.error?.message?.trim()
+          const errorStatus = errorPayload?.error?.status?.trim()
+          const detail = [errorStatus, errorMessage].filter(Boolean).join(' - ')
+
+          if (response.status === 404 || response.status === 429 || response.status === 503) {
+            continue
+          }
+
+          return {
+            ...fallback,
+            reason: detail ? `Gemini HTTP ${response.status}: ${detail}` : `Gemini HTTP ${response.status}`,
+          }
+        }
+
+        const data = (await response.json()) as GeminiApiResponse
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text
+
+        if (!rawText) {
+          return {
+            ...fallback,
+            reason: 'Gemini returned empty text.',
+          }
+        }
+
+        return parseGeminiReview(rawText, fallback)
+      }
+
+      return {
+        ...fallback,
+        reason: `No available Gemini model from candidates: ${modelCandidates.join(', ')}`,
+      }
+    } catch (error: unknown) {
+      return {
+        ...fallback,
+        reason: error instanceof Error ? error.message : 'Unknown Gemini error.',
+      }
+    }
+  })()
+
+  inFlightReviewRequests.set(requestKey, task)
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: userPrompt }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-        },
-      }),
-    })
-
-    if (!response.ok) {
-      const errorPayload = (await response.json().catch(() => null)) as GeminiApiErrorResponse | null
-      const errorMessage = errorPayload?.error?.message?.trim()
-      const errorStatus = errorPayload?.error?.status?.trim()
-      const detail = [errorStatus, errorMessage].filter(Boolean).join(' - ')
-
-      return {
-        ...fallback,
-        reason: detail ? `Gemini HTTP ${response.status}: ${detail}` : `Gemini HTTP ${response.status}`,
-      }
-    }
-
-    const data = (await response.json()) as GeminiApiResponse
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text
-
-    if (!rawText) {
-      return {
-        ...fallback,
-        reason: 'Gemini returned empty text.',
-      }
-    }
-
-    return parseGeminiReview(rawText, fallback)
-  } catch (error: unknown) {
-    return {
-      ...fallback,
-      reason: error instanceof Error ? error.message : 'Unknown Gemini error.',
-    }
+    const result = await task
+    recentReviewResults.set(requestKey, { at: Date.now(), result })
+    return result
+  } finally {
+    inFlightReviewRequests.delete(requestKey)
   }
 }
 
 export async function generatePersonalizedAdvice(
   input: GeminiPersonalizationInput,
 ): Promise<GeminiPersonalizationOutput> {
-  const summary = `${input.learnerName} đang ở mức rủi ro ${input.riskLevel}. Cần ưu tiên cải thiện các năng lực: ${input.weakDimensions.join(', ')}.`
+  const summary = `${input.learnerName} đang ở mức rủi ro ${input.riskLevel}.`
+  const uniqueWeakDimensions = [...new Set(input.weakDimensions.map((item) => item.trim()).filter((item) => item.length > 0))]
 
   return {
     summary,
-    recommendedActions: [
-      'Lên kế hoạch học tập theo tuần với mục tiêu rõ ràng',
-      'Thực hiện 1 buổi cố vấn học thuật mỗi tuần',
-      'Theo dõi tiến độ theo từng năng lực trọng yếu',
-    ],
-    earlyWarning: input.riskLevel === 'high' ? 'Cần can thiệp trong 72 giờ tới.' : 'Theo dõi định kỳ mỗi tuần.',
+    recommendedActions: uniqueWeakDimensions,
+    earlyWarning: input.riskLevel,
   }
 }

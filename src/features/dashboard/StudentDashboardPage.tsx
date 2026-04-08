@@ -1,6 +1,6 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
-import type { GeminiLevelReviewOutput, GeminiRadarScores } from '../../services/geminiService'
+import { reviewLevelWithGemini, type GeminiLevelReviewOutput, type GeminiRadarScores } from '../../services/geminiService'
 import type { LevelPredictionResult } from '../../services/mlService'
 
 function RadarCard({ scores }: { scores: GeminiRadarScores }) {
@@ -231,7 +231,17 @@ function StatCard({
 }
 
 export default function StudentDashboardPage() {
-  const assessmentData = useMemo(() => {
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  const [hasSynced, setHasSynced] = useState(false)
+
+  const [assessmentData, setAssessmentData] = useState<{
+    learnerName?: string
+    competencyDescription: string
+    competencyId: string
+    analyzedAt: string
+    mlResult: LevelPredictionResult
+    geminiResult: GeminiLevelReviewOutput
+  } | null>(() => {
     const raw = sessionStorage.getItem('curatorAssessmentResult')
     if (!raw) return null
 
@@ -247,7 +257,50 @@ export default function StudentDashboardPage() {
     } catch {
       return null
     }
-  }, [])
+  })
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function syncAiResult() {
+      if (!assessmentData || hasSynced) {
+        return
+      }
+
+      setHasSynced(true)
+
+      setSyncStatus('Dang thu dong bo phan tich AI...')
+
+      const refreshed = await reviewLevelWithGemini({
+        learnerName: assessmentData.learnerName ?? 'Nguoi hoc',
+        userInput: assessmentData.competencyDescription,
+        mlResult: assessmentData.mlResult,
+        competencyId: assessmentData.competencyId,
+      })
+
+      if (cancelled) return
+
+      if (refreshed.source === 'live') {
+        const nextData = {
+          ...assessmentData,
+          geminiResult: refreshed,
+          analyzedAt: new Date().toISOString(),
+        }
+
+        sessionStorage.setItem('curatorAssessmentResult', JSON.stringify(nextData))
+        setAssessmentData(nextData)
+        setSyncStatus('Da dong bo thanh cong ket qua AI tu Gemini.')
+      } else {
+        setSyncStatus(refreshed.reason ? `AI chua san sang: ${refreshed.reason}` : 'AI chua san sang de phan tich.')
+      }
+    }
+
+    void syncAiResult()
+
+    return () => {
+      cancelled = true
+    }
+  }, [assessmentData, hasSynced])
 
   const finalLevel = assessmentData?.geminiResult.finalLevel ?? 4
   const learnerName = assessmentData?.learnerName?.trim() || 'Trung'
@@ -263,13 +316,16 @@ export default function StudentDashboardPage() {
 
   const riskLevel: 'low' | 'medium' | 'high' = finalLevel <= 3 ? 'high' : finalLevel <= 5 ? 'medium' : 'low'
   const riskProbability = riskLevel === 'high' ? 0.82 : riskLevel === 'medium' ? 0.48 : 0.19
+  const isAiFallback = assessmentData?.geminiResult.source === 'fallback'
+  const aiSummary = isAiFallback ? undefined : assessmentData?.geminiResult.analysis
+  const aiWarning = isAiFallback ? undefined : assessmentData?.geminiResult.earlyRiskWarning
 
   const advisor = {
     summary:
-      assessmentData?.geminiResult.analysis ??
+      aiSummary ??
       'Chưa có dữ liệu AI từ trang Assessment. Vui lòng hoàn thành bước đánh giá để đồng bộ gợi ý.',
     earlyWarning:
-      assessmentData?.geminiResult.earlyRiskWarning ??
+      aiWarning ??
       'Chưa có cảnh báo sớm. Hãy cập nhật hồ sơ và hoàn tất đánh giá năng lực số.',
     recommendedActions: assessmentData?.geminiResult.personalizedAdvice ?? [
       'Hoàn tất bước đánh giá năng lực số để nhận lộ trình cá nhân hóa.',
@@ -281,7 +337,7 @@ export default function StudentDashboardPage() {
 
   const riskStatusLabel = riskLevel === 'high' ? 'Nguy cơ cao' : riskLevel === 'medium' ? 'Cần theo dõi' : 'An toàn'
   const riskHint =
-    assessmentData?.geminiResult.earlyRiskWarning ??
+    aiWarning ??
     (riskLevel === 'high'
       ? 'Cần kích hoạt cảnh báo sớm trong 72 giờ'
       : riskLevel === 'medium'

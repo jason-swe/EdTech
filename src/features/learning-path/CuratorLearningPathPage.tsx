@@ -1,7 +1,7 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-import type { GeminiLevelReviewOutput } from '../../services/geminiService'
+import { reviewLevelWithGemini, type GeminiLevelReviewOutput, type GeminiRoadmapStep } from '../../services/geminiService'
 import type { LevelPredictionResult } from '../../services/mlService'
 
 const sideItems = [
@@ -149,12 +149,23 @@ function StageSection({
 }
 
 export default function CuratorLearningPathPage() {
-  const assessmentData = useMemo(() => {
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  const [hasSynced, setHasSynced] = useState(false)
+
+  const [assessmentData, setAssessmentData] = useState<{
+    learnerName?: string
+    competencyDescription: string
+    competencyId: string
+    analyzedAt: string
+    mlResult: LevelPredictionResult
+    geminiResult: GeminiLevelReviewOutput
+  } | null>(() => {
     const raw = sessionStorage.getItem('curatorAssessmentResult')
     if (!raw) return null
 
     try {
       return JSON.parse(raw) as {
+        learnerName?: string
         competencyDescription: string
         competencyId: string
         analyzedAt: string
@@ -164,29 +175,103 @@ export default function CuratorLearningPathPage() {
     } catch {
       return null
     }
-  }, [])
+  })
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function syncAiResult() {
+      if (!assessmentData || hasSynced) {
+        return
+      }
+
+      setHasSynced(true)
+
+      setSyncStatus('Dang thu dong bo phan tich AI...')
+
+      const refreshed = await reviewLevelWithGemini({
+        learnerName: assessmentData.learnerName ?? 'Nguoi hoc',
+        userInput: assessmentData.competencyDescription,
+        mlResult: assessmentData.mlResult,
+        competencyId: assessmentData.competencyId,
+      })
+
+      if (cancelled) return
+
+      if (refreshed.source === 'live') {
+        const nextData = {
+          ...assessmentData,
+          geminiResult: refreshed,
+          analyzedAt: new Date().toISOString(),
+        }
+
+        sessionStorage.setItem('curatorAssessmentResult', JSON.stringify(nextData))
+        setAssessmentData(nextData)
+        setSyncStatus('Da dong bo thanh cong ket qua AI tu Gemini.')
+      } else {
+        setSyncStatus(refreshed.reason ? `AI chua san sang: ${refreshed.reason}` : 'AI chua san sang de phan tich.')
+      }
+    }
+
+    void syncAiResult()
+
+    return () => {
+      cancelled = true
+    }
+  }, [assessmentData, hasSynced])
 
   const finalLevel = assessmentData?.geminiResult.finalLevel ?? 4
   const confidence = assessmentData?.geminiResult.confidenceScore ?? 0
+  const isAiFallback = assessmentData?.geminiResult.source === 'fallback'
+  const aiAnalysis = isAiFallback ? undefined : assessmentData?.geminiResult.analysis
+  const aiWarning = isAiFallback ? undefined : assessmentData?.geminiResult.earlyRiskWarning
   const advice = assessmentData?.geminiResult.personalizedAdvice ?? []
-  const analysis = assessmentData?.geminiResult.analysis
-  const warning = assessmentData?.geminiResult.earlyRiskWarning
+  const analysis = aiAnalysis
+  const warning = aiWarning
+  const roadmap = assessmentData?.geminiResult.roadmap ?? []
+
+  const roadmapSteps = useMemo(
+    () =>
+      [...roadmap]
+        .filter((item): item is GeminiRoadmapStep => typeof item?.step === 'number')
+        .sort((a, b) => (a.step ?? 0) - (b.step ?? 0)),
+    [roadmap],
+  )
+
+  const stageOneStep = roadmapSteps[0]
+  const stageTwoStep = roadmapSteps[1] ?? roadmapSteps[0]
+  const stageThreeStep = roadmapSteps[2] ?? roadmapSteps[1]
   const stage2Tone: 'done' | 'progress' | 'pending' = finalLevel >= 6 ? 'done' : finalLevel >= 4 ? 'progress' : 'pending'
-  const stage2Badge = finalLevel >= 6 ? 'Giai đoạn 2 • Hoàn thành 100%' : finalLevel >= 4 ? 'Giai đoạn 2 • Đang tiến hành' : 'Giai đoạn 2 • Ưu tiên bắt đầu'
-  const stage1Title =
-    finalLevel >= 6 ? 'Nền tảng An toàn & Bảo mật nâng cao' : finalLevel >= 4 ? 'Nền tảng An toàn & Bảo mật tiêu chuẩn' : 'Nền tảng An toàn & Bảo mật cần củng cố'
+  const stage2Badge =
+    stageTwoStep?.target_level && finalLevel >= stageTwoStep.target_level
+      ? 'Giai đoạn 2 • Hoàn thành 100%'
+      : finalLevel >= 4
+      ? 'Giai đoạn 2 • Đang tiến hành'
+      : 'Giai đoạn 2 • Ưu tiên bắt đầu'
+  const stage1Title = stageOneStep?.target_level
+    ? 'Giai đoạn 1'
+    : finalLevel >= 6
+    ? 'Nền tảng năng lực số nâng cao'
+    : finalLevel >= 4
+    ? 'Nền tảng năng lực số tiêu chuẩn'
+    : 'Nền tảng năng lực số cần củng cố'
   const stage1Sub =
+    stageOneStep?.action_items?.[0] ??
     warning ??
-    'Thiết lập môi trường làm việc an toàn và xác thực danh tính học thuật.'
-  const stage3Title =
-    finalLevel >= 6 ? 'Sáng tạo & Lan tỏa Tri thức ở cấp độ cao' : 'Sáng tạo & Lan tỏa Tri thức theo nhịp cá nhân'
+    'Bắt đầu với các hành động nền tảng theo đề xuất AI.'
+  const stage3Title = stageThreeStep?.target_level
+    ? 'Giai đoạn 3'
+    : finalLevel >= 6
+    ? 'Sáng tạo & Lan tỏa Tri thức ở cấp độ cao'
+    : 'Sáng tạo & Lan tỏa Tri thức theo nhịp cá nhân'
   const stage3Sub =
+    stageThreeStep?.action_items?.[0] ??
     advice[2] ??
-    'Xây dựng thương hiệu cá nhân trong cộng đồng học thuật và chia sẻ kết quả nghiên cứu.'
+    'Tiếp tục lộ trình theo nhịp cá nhân hóa từ AI.'
   const stage3TaskLeft =
-    advice[0] ?? 'Thiết kế Infographic Học thuật'
+    stageThreeStep?.action_items?.[1] ?? advice[0] ?? 'Tiếp tục nhiệm vụ AI đề xuất'
   const stage3TaskRight =
-    advice[1] ?? 'Tương tác Cộng đồng ResearchGate'
+    stageThreeStep?.action_items?.[2] ?? advice[1] ?? 'Hoàn tất mục tiêu bước kế tiếp'
 
   return (
     <div className="min-h-screen bg-[#E9EEF6] font-sans text-[#334155]">
@@ -297,7 +382,16 @@ export default function CuratorLearningPathPage() {
                   </svg>
                 }
                 dotTone="done"
-                badge={<StageBadge label="Giai đoạn 1 • Hoàn thành 100%" tone="done" />}
+                badge={
+                  <StageBadge
+                    label={
+                      stageOneStep?.target_level && finalLevel >= stageOneStep.target_level
+                        ? 'Giai đoạn 1 • Hoàn thành 100%'
+                        : 'Giai đoạn 1 • Đang thực hiện'
+                    }
+                    tone={stageOneStep?.target_level && finalLevel >= stageOneStep.target_level ? 'done' : 'progress'}
+                  />
+                }
                 title={stage1Title}
                 sub={stage1Sub}
               >
@@ -308,9 +402,14 @@ export default function CuratorLearningPathPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a3 3 0 10-6 0v2m9 0H6a1 1 0 00-1 1v7a1 1 0 001 1h12a1 1 0 001-1v-7a1 1 0 00-1-1z" />
                       </svg>
                     }
-                    title="Xác thực 2FA & Quản lý mật khẩu"
-                    subtitle="Đã hoàn thành • 45 phút"
-                    right="✓"
+                    title={stageOneStep?.action_items?.[0] ?? 'Nhiệm vụ 1 theo đề xuất AI'}
+                    subtitle={
+                      stageOneStep?.focus_keywords?.length
+                        ? `Từ khóa trọng tâm: ${stageOneStep.focus_keywords.slice(0, 3).join(', ')}`
+                        : 'Ưu tiên hoàn thành trước khi chuyển bước'
+                    }
+                    right={stageOneStep?.target_level && finalLevel >= stageOneStep.target_level ? '✓' : '0%'}
+                    highlight
                   />
                   <TaskCard
                     icon={
@@ -319,9 +418,14 @@ export default function CuratorLearningPathPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10 18h4m-5 3h6" />
                       </svg>
                     }
-                    title="Tối ưu hồ sơ ORCID & Google Scholar"
-                    subtitle="Đã hoàn thành • 60 phút"
-                    right="✓"
+                    title={stageOneStep?.action_items?.[1] ?? stageOneStep?.action_items?.[0] ?? 'Nhiệm vụ 2 theo đề xuất AI'}
+                    subtitle={
+                      stageOneStep?.focus_keywords?.length
+                        ? `Bổ sung theo keywords: ${stageOneStep.focus_keywords.slice(0, 2).join(', ')}`
+                        : 'Theo dõi tiến độ bằng minh chứng thực hành'
+                    }
+                    right={stageOneStep?.target_level && finalLevel >= stageOneStep.target_level ? '✓' : '0%'}
+                    highlight
                   />
                 </div>
               </StageSection>
@@ -335,8 +439,18 @@ export default function CuratorLearningPathPage() {
                 }
                 dotTone={stage2Tone}
                 badge={<StageBadge label={stage2Badge} tone={stage2Tone} />}
-                title={advice[0] ? `Khai thác & Xử lý Dữ liệu: ${advice[0]}` : 'Khai thác & Xử lý Dữ liệu'}
-                sub={advice[0] ?? 'Kỹ năng truy xuất, đánh giá và quản trị nguồn học liệu số khổng lồ.'}
+                title={
+                  stageTwoStep?.target_level
+                    ? 'Giai đoạn 2 • Khai thác & Xử lý Dữ liệu'
+                    : advice[0]
+                    ? `Giai đoạn 2 • Khai thác & Xử lý Dữ liệu: ${advice[0]}`
+                    : 'Giai đoạn 2 • Khai thác & Xử lý Dữ liệu'
+                }
+                sub={
+                  stageTwoStep?.action_items?.[0] ??
+                  advice[0] ??
+                  'Kỹ năng truy xuất, đánh giá và quản trị nguồn học liệu số khổng lồ.'
+                }
               >
                 <div className="grid gap-3 sm:grid-cols-2">
                   <TaskCard
@@ -347,9 +461,13 @@ export default function CuratorLearningPathPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 12v6c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-6" />
                       </svg>
                     }
-                    title="Module 1: Chiến thuật tìm kiếm nâng cao"
-                    subtitle={advice[1] ?? 'Ước tính: 4 giờ học theo nhịp AI đề xuất'}
-                    right={finalLevel >= 6 ? '100%' : finalLevel >= 4 ? '50%' : '0%'}
+                    title={stageTwoStep?.action_items?.[0] ? `Module 1: ${stageTwoStep.action_items[0]}` : 'Module 1: Theo đề xuất AI'}
+                    subtitle={
+                      stageTwoStep?.focus_keywords?.length
+                        ? `Từ khóa trọng tâm: ${stageTwoStep.focus_keywords.slice(0, 3).join(', ')}`
+                        : advice[1] ?? 'Ước tính: 4 giờ học theo nhịp AI đề xuất'
+                    }
+                    right={stageTwoStep?.target_level && finalLevel >= stageTwoStep.target_level ? '100%' : finalLevel >= 4 ? '50%' : '0%'}
                     highlight={stage2Tone !== 'pending'}
                   />
                   <TaskCard
@@ -358,8 +476,18 @@ export default function CuratorLearningPathPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V8m5 8V5m5 11v-6" />
                       </svg>
                     }
-                    title={advice[2] ? `Module 2: ${advice[2]}` : 'Module 2: Phân tích dữ liệu với R/Python'}
-                    subtitle="Ước tính: 12 giờ học theo phân tích AI"
+                    title={
+                      stageTwoStep?.action_items?.[1]
+                        ? `Module 2: ${stageTwoStep.action_items[1]}`
+                        : advice[2]
+                        ? `Module 2: ${advice[2]}`
+                        : 'Module 2: Theo đề xuất AI'
+                    }
+                    subtitle={
+                      stageTwoStep?.focus_keywords?.length
+                        ? `Bổ sung theo keywords: ${stageTwoStep.focus_keywords.slice(0, 2).join(', ')}`
+                        : 'Ước tính: 12 giờ học theo phân tích AI'
+                    }
                     disabled={stage2Tone === 'pending'}
                   />
                 </div>
@@ -371,10 +499,14 @@ export default function CuratorLearningPathPage() {
                     Dự án đề xuất
                   </p>
                   <h4 className="mt-1 text-[0.95rem] font-semibold text-[#1F2937]">
-                    {analysis ? 'Hệ thống quản lý tài liệu Zotero tối ưu theo AI' : 'Hệ thống quản lý tài liệu Zotero tối ưu'}
+                    {stageTwoStep?.action_items?.[2]
+                      ? `Dự án bước ${stageTwoStep.step}: ${stageTwoStep.action_items[2]}`
+                      : analysis ?? 'Dự án theo gợi ý AI'}
                   </h4>
                   <p className="mt-1 text-[0.82rem] leading-[1.6] text-[#6B7280]">
-                    {advice[2] ?? 'Xây dựng quy trình lưu trữ và đồng bộ trích dẫn cho hơn 50 bài báo học thuật chuyên ngành của bạn.'}
+                    {stageTwoStep?.focus_keywords?.length
+                      ? `Tập trung triển khai với các từ khóa: ${stageTwoStep.focus_keywords.join(', ')}.`
+                      : advice[2] ?? 'Triển khai dự án dựa trên roadmap AI cá nhân hóa.'}
                   </p>
                   <p className="mt-2 text-[0.7rem] text-[#9AA5B5]">+12 ngày làm việc</p>
                 </div>

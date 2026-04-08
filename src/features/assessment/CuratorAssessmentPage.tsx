@@ -1,7 +1,7 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-import type { GeminiLevelReviewOutput, GeminiRadarScores } from '../../services/geminiService'
+import { reviewLevelWithGemini, type GeminiLevelReviewOutput, type GeminiRadarScores } from '../../services/geminiService'
 import type { LevelPredictionResult } from '../../services/mlService'
 
 const sideItems = [
@@ -156,12 +156,23 @@ function InsightCard({
 }
 
 export default function CuratorAssessmentPage() {
-  const assessmentData = useMemo(() => {
+  const [, setSyncStatus] = useState<string | null>(null)
+  const [hasSynced, setHasSynced] = useState(false)
+
+  const [assessmentData, setAssessmentData] = useState<{
+    learnerName?: string
+    competencyDescription: string
+    competencyId: string
+    analyzedAt: string
+    mlResult: LevelPredictionResult
+    geminiResult: GeminiLevelReviewOutput
+  } | null>(() => {
     const raw = sessionStorage.getItem('curatorAssessmentResult')
     if (!raw) return null
 
     try {
       return JSON.parse(raw) as {
+        learnerName?: string
         competencyDescription: string
         competencyId: string
         analyzedAt: string
@@ -171,28 +182,85 @@ export default function CuratorAssessmentPage() {
     } catch {
       return null
     }
-  }, [])
+  })
 
-  const finalLevel = assessmentData?.geminiResult.finalLevel ?? 4
-  const overallScore = assessmentData?.geminiResult.overallScore ?? Math.round((finalLevel / 8) * 100)
+  useEffect(() => {
+    let cancelled = false
+
+    async function syncAiResult() {
+      if (!assessmentData || hasSynced) {
+        return
+      }
+
+      setHasSynced(true)
+
+      setSyncStatus('Dang thu dong bo phan tich AI...')
+
+      const refreshed = await reviewLevelWithGemini({
+        learnerName: assessmentData.learnerName ?? 'Nguoi hoc',
+        userInput: assessmentData.competencyDescription,
+        mlResult: assessmentData.mlResult,
+        competencyId: assessmentData.competencyId,
+      })
+
+      if (cancelled) return
+
+      if (refreshed.source === 'live') {
+        const nextData = {
+          ...assessmentData,
+          geminiResult: refreshed,
+          analyzedAt: new Date().toISOString(),
+        }
+
+        sessionStorage.setItem('curatorAssessmentResult', JSON.stringify(nextData))
+        setAssessmentData(nextData)
+        setSyncStatus('Da dong bo thanh cong ket qua AI tu Gemini.')
+      } else {
+        setSyncStatus(refreshed.reason ? `AI chua san sang: ${refreshed.reason}` : 'AI chua san sang de phan tich.')
+      }
+    }
+
+    void syncAiResult()
+
+    return () => {
+      cancelled = true
+    }
+  }, [assessmentData, hasSynced])
+
+  const finalLevel = assessmentData?.geminiResult.finalLevel
+  const overallScore = assessmentData?.geminiResult.overallScore ?? 0
+  const isLiveAiResult = assessmentData?.geminiResult.source === 'live'
   const radarScores = assessmentData?.geminiResult.radarScores ?? {
-    dataAndInformation: overallScore,
-    communicationAndCollaboration: overallScore,
-    digitalContentCreation: overallScore,
-    safety: overallScore,
-    problemSolving: overallScore,
-    aiApplication: overallScore,
+    dataAndInformation: 0,
+    communicationAndCollaboration: 0,
+    digitalContentCreation: 0,
+    safety: 0,
+    problemSolving: 0,
+    aiApplication: 0,
   }
 
-  const strengthTitle = finalLevel >= 6 ? 'Thế mạnh: Năng lực số nâng cao' : 'Thế mạnh: Nền tảng tư duy số'
-  const strengthContent =
-    assessmentData?.geminiResult.personalizedAdvice[0] ??
-    'Bạn có nền tảng học tập ổn định. Hãy tiếp tục duy trì nhịp độ và cập nhật minh chứng năng lực định kỳ.'
+  const strengthTitle = typeof finalLevel === 'number' ? (finalLevel >= 6 ? 'Thế mạnh: Năng lực số nâng cao' : 'Thế mạnh: Nền tảng tư duy số') : ''
+  const strengthContent = isLiveAiResult ? (assessmentData?.geminiResult.personalizedAdvice[0] ?? '') : ''
 
-  const focusTitle = finalLevel <= 4 ? 'Cần chú trọng: Nâng bậc năng lực' : 'Cần chú trọng: Củng cố chiều sâu'
+  const focusTitle = typeof finalLevel === 'number' ? (finalLevel <= 4 ? 'Cần chú trọng: Nâng bậc năng lực' : 'Cần chú trọng: Củng cố chiều sâu') : ''
   const focusContent =
-    assessmentData?.geminiResult.earlyRiskWarning ??
-    'Cần bổ sung thêm minh chứng thực hành để giảm sai lệch đánh giá và tăng độ tin cậy cho hồ sơ năng lực.'
+    isLiveAiResult
+      ? (assessmentData?.geminiResult.earlyRiskWarning?.trim() || assessmentData?.geminiResult.mentorAdvice?.trim() || '')
+      : ''
+
+  const aiGoalTexts =
+    isLiveAiResult
+      ? assessmentData?.geminiResult.roadmap
+          ?.flatMap((step) => (Array.isArray(step.action_items) ? step.action_items : []))
+          .filter((item): item is string => typeof item === 'string' && item.trim().length > 0) ?? []
+      : []
+
+  const suggestedGoals = [
+    ...aiGoalTexts,
+    ...(isLiveAiResult ? (assessmentData?.geminiResult.personalizedAdvice ?? []) : []),
+  ]
+    .filter((item, index, list) => list.indexOf(item) === index)
+    .slice(0, 4)
 
   return (
     <div className="min-h-screen bg-[#E9EEF6] font-sans text-[#334155]">
@@ -321,28 +389,63 @@ export default function CuratorAssessmentPage() {
               </div>
             </section>
 
-            <section className="flex flex-col gap-5 rounded-3xl border border-[#DCE4EF] bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#D9E5FA]">
-                  <svg className="h-7 w-7 text-[#1B4AA0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6.75a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a7.5 7.5 0 0115 0" />
-                  </svg>
-                </span>
-                <div>
-                  <p className="text-[1.1rem] font-semibold text-[#1E3A8A]">Sẵn sàng bước tiếp?</p>
-                  <p className="text-[0.92rem] text-[#64748B]">
-                    {assessmentData?.geminiResult.personalizedAdvice[1] ?? 'Chung toi da phac thao lo trinh hoc tap ca nhan hoa cho ban.'}
-                  </p>
-                </div>
+            <section className="space-y-5 rounded-3xl border border-[#DCE4EF] bg-white p-6">
+              <div>
+                <h2 className="text-[2rem] font-black leading-[1.15] tracking-[-0.02em] text-[#0E2F6E]">Mục tiêu đề xuất</h2>
+                <p className="mt-1 text-[0.95rem] text-[#64748B]">Các mục tiêu dưới đây được AI gợi ý theo hồ sơ năng lực của bạn.</p>
               </div>
 
-              <Link
-                to="/curator-learning-plan"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0F3E97] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,62,151,0.2)] transition-all hover:bg-[#0D3584] hover:shadow-[0_12px_24px_rgba(15,62,151,0.26)]"
-              >
-                Tiếp tục thiết kế Lộ trình học tập
-                <span>→</span>
-              </Link>
+              <div className="grid gap-3 md:grid-cols-2">
+                {suggestedGoals.map((goal, index) => {
+                  const priorityLabel = index === 0 ? 'Cao' : index === 1 ? 'Trung bình' : 'Thấp'
+                  const priorityTone =
+                    index === 0
+                      ? 'bg-[#E7EFFD] text-[#1D4BA2]'
+                      : index === 1
+                        ? 'bg-[#EEF3FB] text-[#3E5A89]'
+                        : 'bg-[#F2F5FA] text-[#64748B]'
+
+                  return (
+                    <article key={`${goal}-${index}`} className="rounded-2xl border border-[#E2E8F1] bg-[#FBFCFF] px-4 py-3.5">
+                      <label className="flex cursor-pointer items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          defaultChecked={index < 2}
+                          className="mt-0.5 h-4 w-4 rounded border-[#B8C5DA] text-[#1E4BA5] focus:ring-[#1E4BA5]"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-[0.96rem] font-semibold text-[#0F2F6C]">{goal}</p>
+                          <p className="mt-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[#8A9BB4]">
+                            Ưu tiên
+                            <span className={`ml-2 rounded px-1.5 py-[1px] text-[0.62rem] font-semibold normal-case ${priorityTone}`}>
+                              {priorityLabel}
+                            </span>
+                          </p>
+                        </div>
+                      </label>
+                    </article>
+                  )
+                })}
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <p className="text-[0.92rem] font-semibold text-[#214A96]">Mục tiêu cá nhân bổ sung</p>
+                <input
+                  type="text"
+                  placeholder="Nhập thêm mục tiêu cá nhân tại đây..."
+                  className="w-full rounded-xl border border-[#D7E0EE] bg-white px-4 py-3 text-sm text-[#334155] outline-none transition-colors placeholder:text-[#9AA8BF] focus:border-[#1E4BA5]"
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <Link
+                  to="/curator-learning-plan"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0F3E97] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,62,151,0.2)] transition-all hover:bg-[#0D3584] hover:shadow-[0_12px_24px_rgba(15,62,151,0.26)]"
+                >
+                  Tiếp tục thiết lập Lộ trình
+                  <span>→</span>
+                </Link>
+              </div>
             </section>
           </div>
 
