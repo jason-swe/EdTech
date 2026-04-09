@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 
+import { getUserInitials, useAuth } from '../../auth/authContext'
 import { reviewLevelWithGemini, type GeminiLevelReviewOutput, type GeminiRadarScores } from '../../services/geminiService'
 import type { LevelPredictionResult } from '../../services/mlService'
 
@@ -231,7 +232,8 @@ function StatCard({
 }
 
 export default function StudentDashboardPage() {
-  const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  const { user, logout } = useAuth()
+  const [, setSyncStatus] = useState<string | null>(null)
   const [hasSynced, setHasSynced] = useState(false)
 
   const [assessmentData, setAssessmentData] = useState<{
@@ -303,7 +305,7 @@ export default function StudentDashboardPage() {
   }, [assessmentData, hasSynced])
 
   const finalLevel = assessmentData?.geminiResult.finalLevel ?? 4
-  const learnerName = assessmentData?.learnerName?.trim() || 'Trung'
+  const learnerName = assessmentData?.learnerName?.trim() || user?.fullName?.trim() || 'Trung'
   const overallScore = assessmentData?.geminiResult.overallScore ?? Math.round((finalLevel / 8) * 100)
   const radarScores = assessmentData?.geminiResult.radarScores ?? {
     dataAndInformation: overallScore,
@@ -393,12 +395,15 @@ export default function StudentDashboardPage() {
                   <p className="text-[0.84rem] font-semibold text-[#0F172A]">{learnerName}</p>
                   <p className="mt-1 text-[0.7rem] text-[#64748B]">Thành viên</p>
                 </div>
-                <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#D9E2EF] bg-[#0F3F95] shadow-[0_4px_10px_rgba(15,63,149,0.2)]">
-                  <svg className="h-7 w-7" viewBox="0 0 48 48" aria-hidden>
-                    <circle cx="24" cy="24" r="24" fill="#0F3F95" />
-                    <circle cx="24" cy="18" r="8" fill="#F5F8FC" />
-                    <path d="M10 40c2-7 8-11 14-11s12 4 14 11" fill="#F5F8FC" />
-                  </svg>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="rounded-xl border border-[#CAD6E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#3F5370] transition-colors hover:bg-[#EEF4FF]"
+                >
+                  Đăng xuất
+                </button>
+                <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[#D9E2EF] bg-[#0F3F95] text-sm font-semibold text-white shadow-[0_4px_10px_rgba(15,63,149,0.2)]">
+                  {getUserInitials(user?.fullName ?? learnerName)}
                 </span>
               </div>
             </div>

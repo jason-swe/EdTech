@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+import { getUserInitials, useAuth } from '../../auth/authContext'
 import { reviewLevelWithGemini, type GeminiLevelReviewOutput, type GeminiRadarScores } from '../../services/geminiService'
 import type { LevelPredictionResult } from '../../services/mlService'
 
@@ -40,7 +41,7 @@ const sideItems = [
   },
 ] as const
 
-function RadarChart({ scores }: { scores: GeminiRadarScores }) {
+function RadarChart({ scores, overallScore }: { scores: GeminiRadarScores; overallScore: number }) {
   const centerX = 310
   const centerY = 250
   const maxRadius = 180
@@ -75,8 +76,18 @@ function RadarChart({ scores }: { scores: GeminiRadarScores }) {
   })
 
   return (
-    <div className="relative mx-auto h-[430px] w-full max-w-[620px]">
-      <svg viewBox="0 0 620 500" className="h-full w-full" aria-label="Biểu đồ radar năng lực số">
+    <article className="rounded-2xl bg-white p-4 shadow-[0_8px_22px_rgba(15,35,70,0.06)]">
+      <div className="flex items-start justify-between">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#6B7D95]">
+          Điểm năng lực tổng quát
+        </p>
+        <p className="text-right text-[4.2rem] font-black leading-none tracking-[-0.03em] text-[#0D3C8F]">
+          {overallScore}
+          <span className="ml-1 text-[2.1rem] font-semibold text-[#C1C6CE]">/100</span>
+        </p>
+      </div>
+      <div className="relative mt-2 h-[430px]">
+        <svg viewBox="0 0 620 500" className="h-full w-full" aria-label="Biểu đồ radar năng lực số">
         <g fill="none" stroke="#DCE3ED">
           <circle cx="310" cy="250" r="180" />
           <circle cx="310" cy="250" r="157.5" />
@@ -108,25 +119,26 @@ function RadarChart({ scores }: { scores: GeminiRadarScores }) {
         </g>
       </svg>
 
-      <span className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
-        KHAI THÁC DỮ LIỆU VÀ THÔNG TIN
+      <span className="absolute left-1/2 -top-1 -translate-x-1/2 max-w-[140px] whitespace-normal rounded-lg border border-[#D5DFEC] bg-white px-3 py-2 text-center text-[0.65rem] font-semibold leading-tight text-[#4B5563]">
+        KHAI THÁC DỮ LIỆU VÀ<br />THÔNG TIN
       </span>
-      <span className="absolute right-0 top-[132px] rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
-        GIAO TIẾP VÀ HỢP TÁC TRONG MÔI TRƯỜNG SỐ
+      <span className="absolute right-2 top-8 max-w-[140px] whitespace-normal rounded-lg border border-[#D5DFEC] bg-white px-3 py-2 text-center text-[0.65rem] font-semibold leading-tight text-[#4B5563]">
+        GIAO TIẾP VÀ HỢP TÁC<br />TRONG MÔI TRƯỜNG SỐ
       </span>
-      <span className="absolute right-2 bottom-[106px] rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
-        SÁNG TẠO NỘI DUNG SỐ
+      <span className="absolute right-8 bottom-24 max-w-[140px] whitespace-normal rounded-lg border border-[#D5DFEC] bg-white px-3 py-2 text-center text-[0.65rem] font-semibold leading-tight text-[#4B5563]">
+        SÁNG TẠO NỘI<br />DUNG SỐ
       </span>
-      <span className="absolute left-1/2 bottom-1 -translate-x-1/2 rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold text-[#4B5563]">
+      <span className="absolute left-1/2 -bottom-6 -translate-x-1/2 max-w-[140px] rounded-lg border border-[#D5DFEC] bg-white px-3 py-2 text-center text-[0.65rem] font-semibold text-[#4B5563]">
         AN TOÀN
       </span>
-      <span className="absolute left-0 bottom-[106px] rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
-        GIẢI QUYẾT VẤN ĐỀ
+      <span className="absolute left-8 bottom-24 max-w-[140px] whitespace-normal rounded-lg border border-[#D5DFEC] bg-white px-3 py-2 text-center text-[0.65rem] font-semibold leading-tight text-[#4B5563]">
+        GIẢI QUYẾT<br />VẤN ĐỀ
       </span>
-      <span className="absolute left-0 top-[132px] rounded-full border border-[#D5DFEC] bg-white px-4 py-2 text-[0.73rem] font-semibold leading-tight text-[#4B5563]">
-        ỨNG DỤNG TRÍ TUỆ NHÂN TẠO
+      <span className="absolute left-8 top-24 max-w-[140px] whitespace-normal rounded-lg border border-[#D5DFEC] bg-white px-3 py-2 text-center text-[0.65rem] font-semibold leading-tight text-[#4B5563]">
+        ỨNG DỤNG TRÍ<br />TUỆ NHÂN TẠO
       </span>
-    </div>
+      </div>
+    </article>
   )
 }
 
@@ -156,6 +168,7 @@ function InsightCard({
 }
 
 export default function CuratorAssessmentPage() {
+  const { user, logout, completeSetupStep } = useAuth()
   const [, setSyncStatus] = useState<string | null>(null)
   const [hasSynced, setHasSynced] = useState(false)
 
@@ -255,12 +268,72 @@ export default function CuratorAssessmentPage() {
           .filter((item): item is string => typeof item === 'string' && item.trim().length > 0) ?? []
       : []
 
-  const suggestedGoals = [
+  const aiTextPool = [
     ...aiGoalTexts,
     ...(isLiveAiResult ? (assessmentData?.geminiResult.personalizedAdvice ?? []) : []),
+    ...(isLiveAiResult && assessmentData?.geminiResult.mentorAdvice ? [assessmentData.geminiResult.mentorAdvice] : []),
+    ...(isLiveAiResult && assessmentData?.geminiResult.analysis ? [assessmentData.geminiResult.analysis] : []),
+    ...(isLiveAiResult && assessmentData?.geminiResult.assessment?.summary ? [assessmentData.geminiResult.assessment.summary] : []),
   ]
+
+  const suggestedGoals = aiTextPool
+    .flatMap((item) =>
+      item
+        .split(/[\n.;]+/)
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0),
+    )
     .filter((item, index, list) => list.indexOf(item) === index)
-    .slice(0, 4)
+    .slice(0, 6)
+
+  const bloomLevels = [
+    { label: 'Nhớ', keywords: ['liet ke', 'nho', 'nhan dien', 'xac dinh', 'goi ten', 'trinh bay'] },
+    { label: 'Hiểu', keywords: ['giai thich', 'tom tat', 'dien giai', 'mo ta', 'phan biet', 'minh hoa'] },
+    { label: 'Vận dụng', keywords: ['ap dung', 'thuc hien', 'van dung', 'trien khai', 'thuc hanh', 'su dung'] },
+    { label: 'Phân tích', keywords: ['phan tich', 'so sanh', 'kiem tra', 'tim nguyen nhan', 'tach', 'doi chieu'] },
+    { label: 'Đánh giá', keywords: ['danh gia', 'phan bien', 'nhan xet', 'kiem dinh', 'tham dinh', 'xep hang'] },
+    { label: 'Sáng tạo', keywords: ['sang tao', 'thiet ke', 'de xuat', 'xay dung', 'phat trien', 'toi uu'] },
+  ] as const
+
+  function normalizeText(text: string): string {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+  }
+
+  function detectBloomIndex(goal: string): number {
+    const normalizedGoal = normalizeText(goal)
+    let bestIndex = 2
+    let bestScore = 0
+
+    bloomLevels.forEach((level, index) => {
+      const score = level.keywords.reduce((acc, keyword) => {
+        return acc + (normalizedGoal.includes(keyword) ? 1 : 0)
+      }, 0)
+
+      if (score > bestScore) {
+        bestScore = score
+        bestIndex = index
+      }
+    })
+
+    return bestIndex
+  }
+
+  const goalsByBloom = suggestedGoals.map((goal) => ({ goal, bloomIndex: detectBloomIndex(goal) }))
+  const unassignedGoals = [...goalsByBloom]
+  const bloomGoals = bloomLevels.map((level, index) => {
+    const exactMatch = unassignedGoals.find((item) => item.bloomIndex === index)
+    if (exactMatch) {
+      unassignedGoals.splice(unassignedGoals.indexOf(exactMatch), 1)
+      return { goal: exactMatch.goal, bloomLabel: level.label }
+    }
+
+    const fallbackGoal = unassignedGoals.shift()
+    return { goal: fallbackGoal?.goal ?? '', bloomLabel: level.label }
+  })
 
   return (
     <div className="min-h-screen bg-[#E9EEF6] font-sans text-[#334155]">
@@ -287,8 +360,15 @@ export default function CuratorAssessmentPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-xl border border-[#CAD6E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#3F5370] transition-colors hover:bg-[#EEF4FF]"
+            >
+              Đăng xuất
+            </button>
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0F3F95] text-[1rem] font-semibold text-white">
-              Q
+              {getUserInitials(user?.fullName)}
             </span>
           </div>
         </div>
@@ -350,20 +430,7 @@ export default function CuratorAssessmentPage() {
             </section>
 
             <section className="grid gap-6 lg:grid-cols-[2.2fr_1fr]">
-              <article className="rounded-3xl border border-[#DCE4EF] bg-white p-5">
-                <div className="flex items-start justify-between">
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#6B7D95]">
-                    Điểm năng lực tổng quát
-                  </p>
-                  <p className="text-right text-[4.2rem] font-black leading-none tracking-[-0.03em] text-[#0D3C8F]">
-                    {overallScore}
-                    <span className="ml-1 text-[2.1rem] font-semibold text-[#C1C6CE]">/100</span>
-                  </p>
-                </div>
-                <div className="mt-2">
-                  <RadarChart scores={radarScores} />
-                </div>
-              </article>
+              <RadarChart scores={radarScores} overallScore={overallScore} />
 
               <div className="space-y-6">
                 <InsightCard
@@ -395,31 +462,27 @@ export default function CuratorAssessmentPage() {
                 <p className="mt-1 text-[0.95rem] text-[#64748B]">Các mục tiêu dưới đây được AI gợi ý theo hồ sơ năng lực của bạn.</p>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                {suggestedGoals.map((goal, index) => {
-                  const priorityLabel = index === 0 ? 'Cao' : index === 1 ? 'Trung bình' : 'Thấp'
-                  const priorityTone =
-                    index === 0
-                      ? 'bg-[#E7EFFD] text-[#1D4BA2]'
-                      : index === 1
-                        ? 'bg-[#EEF3FB] text-[#3E5A89]'
-                        : 'bg-[#F2F5FA] text-[#64748B]'
+              <div className="grid gap-2">
+                {[...bloomGoals].reverse().map((item, index) => {
+                  const rowIndex = 6 - index
 
                   return (
-                    <article key={`${goal}-${index}`} className="rounded-2xl border border-[#E2E8F1] bg-[#FBFCFF] px-4 py-3.5">
-                      <label className="flex cursor-pointer items-start gap-2.5">
+                    <article
+                      key={`${item.goal}-${item.bloomLabel}-${index}`}
+                      className="rounded-2xl border border-[#D7E2F1] bg-white px-4 py-3 shadow-[0_2px_8px_rgba(12,43,96,0.05)]"
+                    >
+                      <label className="flex cursor-pointer items-start gap-3">
                         <input
                           type="checkbox"
-                          defaultChecked={index < 2}
-                          className="mt-0.5 h-4 w-4 rounded border-[#B8C5DA] text-[#1E4BA5] focus:ring-[#1E4BA5]"
+                          defaultChecked={rowIndex >= 5}
+                          className="mt-1 h-4 w-4 rounded border-[#B8C5DA] text-[#1E4BA5] focus:ring-[#1E4BA5]"
                         />
-                        <div className="min-w-0">
-                          <p className="text-[0.96rem] font-semibold text-[#0F2F6C]">{goal}</p>
-                          <p className="mt-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[#8A9BB4]">
-                            Ưu tiên
-                            <span className={`ml-2 rounded px-1.5 py-[1px] text-[0.62rem] font-semibold normal-case ${priorityTone}`}>
-                              {priorityLabel}
-                            </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="inline-flex w-[135px] max-w-full items-center justify-center rounded-lg border border-[#C9D8F2] bg-[#1E4BA5] px-2.5 py-0.5 text-[0.72rem] font-bold text-white shadow-[0_2px_8px_rgba(30,75,165,0.22)]">
+                            Bậc {rowIndex}: {item.bloomLabel}
+                          </span>
+                          <p className="mt-2 break-words text-[0.9rem] font-semibold leading-[1.35] text-[#123C84]">
+                            {item.goal || 'Dang cho AI de xuat muc tieu cho bac nay.'}
                           </p>
                         </div>
                       </label>
@@ -440,6 +503,7 @@ export default function CuratorAssessmentPage() {
               <div className="flex justify-end pt-1">
                 <Link
                   to="/curator-learning-plan"
+                  onClick={() => completeSetupStep(2)}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0F3E97] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,62,151,0.2)] transition-all hover:bg-[#0D3584] hover:shadow-[0_12px_24px_rgba(15,62,151,0.26)]"
                 >
                   Tiếp tục thiết lập Lộ trình

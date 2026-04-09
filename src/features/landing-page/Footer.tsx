@@ -12,10 +12,10 @@ export function Footer() {
         <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-lg font-bold tracking-tight text-[#003380]">
-              ScholarMetric.AI
+              EdTech Enthusiasts
             </p>
             <p className="mt-3 text-sm text-[#4B5563]">
-              © {new Date().getFullYear()} ScholarMetric.AI. Bảo lưu mọi quyền.
+              © {new Date().getFullYear()} EdTech Enthusiasts. Bảo lưu mọi quyền.
             </p>
           </div>
           <nav

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { getUserInitials, useAuth } from '../../auth/authContext'
 import { reviewLevelWithGemini } from '../../services/geminiService'
 import { predictCompetencyLevel } from '../../services/mlService'
 import { validateAssessmentFormInput } from '../../services/ruleEngine'
@@ -109,35 +110,20 @@ function Tag({ text }: { text: string }) {
 
 export default function CuratorProfilePage() {
   const navigate = useNavigate()
+  const { user, logout, completeSetupStep } = useAuth()
   const [basicInfo, setBasicInfo] = useState({
-    fullName: 'Trần Hoàng Nam',
-    studentId: 'B20DCCN123',
-    cohort: 'Công nghệ thông tin 1',
-    school: 'Học viện Công nghệ Bưu chính Viễn thông',
-    major: 'Kỹ thuật phần mềm',
-    gpa: '3.67 / 4.0',
-    graduationYear: '2027',
+    fullName: user?.fullName ?? 'Trần Hoàng Nam',
+    studentId: '',
+    cohort: '',
+    school: '',
+    major: '',
+    gpa: '',
+    graduationYear: '',
   })
 
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: 1,
-      name: 'Hệ thống quản lý học tập thông minh (SmartLMS)',
-      role: 'Fullstack Developer & Team Leader',
-      technologies: 'REACTJS, NODEJS, MONGODB',
-      summary:
-        'Ứng dụng hỗ trợ sinh viên theo dõi tiến độ học tập và đề xuất tài liệu dựa trên AI. Đạt giải Nhất cuộc thi Sáng tạo trẻ cấp Trường.',
-    },
-  ])
+  const [projects, setProjects] = useState<Project[]>([])
 
-  const [certificates, setCertificates] = useState<Certificate[]>([
-    {
-      id: 1,
-      category: 'Ngoại ngữ (Language)',
-      name: 'IELTS Academic 8.0 (IDP)',
-      fileName: 'IELTS_Academic_8.0.pdf',
-    },
-  ])
+  const [certificates, setCertificates] = useState<Certificate[]>([])
 
   const updateProject = (id: number, key: keyof Omit<Project, 'id'>, value: string) => {
     setProjects((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)))
@@ -145,6 +131,19 @@ export default function CuratorProfilePage() {
 
   const updateCertificate = (id: number, key: keyof Omit<Certificate, 'id'>, value: string) => {
     setCertificates((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)))
+  }
+
+  const updateCertificateFile = (id: number, file?: File | null) => {
+    setCertificates((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              fileName: file?.name ?? '',
+            }
+          : item,
+      ),
+    )
   }
 
   const [analysisLoading, setAnalysisLoading] = useState(false)
@@ -214,6 +213,7 @@ export default function CuratorProfilePage() {
         }),
       )
 
+      completeSetupStep(1)
       navigate('/curator-assessment')
     } catch (error: unknown) {
       setAnalysisError(error instanceof Error ? error.message : 'Khong the hoan tat phan tich luc nay.')
@@ -247,8 +247,15 @@ export default function CuratorProfilePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-xl border border-[#CAD6E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#3F5370] transition-colors hover:bg-[#EEF4FF]"
+            >
+              Đăng xuất
+            </button>
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0F3F95] text-[1rem] font-semibold text-white">
-              Q
+              {getUserInitials(user?.fullName)}
             </span>
           </div>
         </div>
@@ -388,6 +395,11 @@ export default function CuratorProfilePage() {
               />
 
               <div className="space-y-4.5">
+                {projects.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[#C8D3E4] bg-[#F7FAFF] px-5 py-6 text-center text-sm text-[#64748B]">
+                    Chưa có dự án nào. Bấm “Thêm dự án mới” để tự nhập dữ liệu.
+                  </div>
+                ) : null}
                 {projects.map((project) => (
                   <div key={project.id} className="rounded-2xl bg-white p-5 sm:p-6">
                     <div className="space-y-5">
@@ -477,6 +489,11 @@ export default function CuratorProfilePage() {
               />
 
               <div className="space-y-4">
+                {certificates.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[#C8D3E4] bg-[#F7FAFF] px-5 py-6 text-center text-sm text-[#64748B]">
+                    Chưa có chứng chỉ nào. Bấm “+ Thêm chứng chỉ khác” để tải file lên.
+                  </div>
+                ) : null}
                 {certificates.map((certificate) => (
                   <div key={certificate.id} className="rounded-2xl bg-white p-5">
                     <div className="grid gap-4 lg:grid-cols-[1fr_1.5fr_auto] lg:items-end">
@@ -498,19 +515,33 @@ export default function CuratorProfilePage() {
                         🗑
                       </button>
                     </div>
-                    <div className="mt-4 flex items-center justify-between rounded-lg bg-[#EEF3FA] px-3 py-2 text-sm text-[#334155]">
-                      <input
-                        value={certificate.fileName}
-                        onChange={(e) => updateCertificate(certificate.id, 'fileName', e.target.value)}
-                        className="w-full bg-transparent outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => updateCertificate(certificate.id, 'fileName', '')}
-                        className="ml-2 text-[#64748B]"
-                      >
-                        ×
-                      </button>
+                    <div className="mt-4 rounded-lg bg-[#EEF3FA] px-3 py-3 text-sm text-[#334155]">
+                      <label className="flex cursor-pointer items-center justify-between gap-3">
+                        <span className="text-[#64748B]">
+                          {certificate.fileName ? 'File đã chọn' : 'Tải file chứng chỉ lên'}
+                        </span>
+                        <span className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-[#1D4BA5] shadow-sm">
+                          Chọn file
+                        </span>
+                        <input
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                          className="hidden"
+                          onChange={(e) => updateCertificateFile(certificate.id, e.target.files?.[0] ?? null)}
+                        />
+                      </label>
+                      <div className="mt-2 flex items-center justify-between gap-2 text-[0.82rem] text-[#334155]">
+                        <span className="truncate">{certificate.fileName || 'Chưa chọn file'}</span>
+                        {certificate.fileName ? (
+                          <button
+                            type="button"
+                            onClick={() => updateCertificateFile(certificate.id, null)}
+                            className="text-[#64748B]"
+                          >
+                            ×
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 ))}

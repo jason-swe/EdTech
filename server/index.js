@@ -29,7 +29,7 @@ app.post('/api/ai/roadmap', async (req, res) => {
       })
     }
 
-    const model = typeof options?.model === 'string' ? options.model : 'gemini-2.5-flash'
+    const model = typeof options?.model === 'string' ? options.model : 'gemini-pro-latest'
 
     const prompt = [
       'You are an EdTech AI planner.',

@@ -91,7 +91,7 @@ TODO
 		"levels": []
 	},
 	"options": {
-		"model": "gemini-2.5-flash"
+		"model": "gemini-pro-latest"
 	}
 }
 ```
@@ -101,7 +101,7 @@ TODO
 ```json
 {
 	"ok": true,
-	"model": "gemini-2.5-flash",
+	"model": "gemini-pro-latest",
 	"data": {
 		"recommendedLevel": "L3",
 		"reasoning": [],

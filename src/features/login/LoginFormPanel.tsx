@@ -1,10 +1,30 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../auth/authContext'
 
 const PRIMARY = '#003399'
 
 export function LoginFormPanel() {
+  const navigate = useNavigate()
+  const { login, getDefaultRoute } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+
+    if (!email.trim()) {
+      setSubmitError('Vui lòng nhập email để đăng nhập.')
+      return
+    }
+
+    const currentUser = login(email, password)
+    setSubmitError(null)
+    navigate(getDefaultRoute(currentUser), { replace: true })
+  }
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto bg-white lg:w-1/2">
@@ -37,7 +57,7 @@ export function LoginFormPanel() {
 
           <form
             className="mt-7 space-y-5"
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={handleSubmit}
           >
             <div>
               <label
@@ -55,6 +75,8 @@ export function LoginFormPanel() {
                   name="email"
                   type="email"
                   autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="username@email.com"
                   className="w-full rounded-lg border-0 bg-[#F3F4F6] py-3 pl-10 pr-3 text-base text-gray-900 placeholder:text-gray-400 outline-none ring-1 ring-transparent transition-shadow focus:ring-2 focus:ring-[#003399]/25"
                 />
@@ -99,6 +121,8 @@ export function LoginFormPanel() {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-lg border-0 bg-[#F3F4F6] py-3 pl-11 pr-11 text-base text-gray-900 outline-none ring-1 ring-transparent transition-shadow focus:ring-2 focus:ring-[#003399]/25"
                 />
                 <button
@@ -175,6 +199,12 @@ export function LoginFormPanel() {
                 />
               </svg>
             </button>
+
+            {submitError ? <p className="text-sm font-semibold text-[#DC2626]">{submitError}</p> : null}
+            <p className="text-[0.75rem] text-[#6B7280]">
+              Mẹo demo: email chứa <span className="font-semibold">admin</span> sẽ vào trang quản trị, chứa{' '}
+              <span className="font-semibold">curator</span> sẽ vào trang giám sát rủi ro, còn lại là học viên theo flow 3 bước.
+            </p>
           </form>
 
           <div className="relative my-7">
@@ -214,13 +244,13 @@ export function LoginFormPanel() {
 
           <p className="mt-7 text-center text-sm text-[#6B7280]">
             Bạn chưa có tài khoản?{' '}
-            <a
-              href="#"
+            <Link
+              to="/signup"
               className="font-semibold transition-opacity hover:opacity-80"
               style={{ color: PRIMARY }}
             >
-              Liên hệ quản trị viên
-            </a>
+              Đăng Ký
+            </Link>
           </p>
 
           <div className="mt-7 flex justify-center gap-7 pb-2 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[#9CA3AF]">

@@ -1,5 +1,7 @@
 import { type ReactNode } from 'react'
 
+import { getUserInitials, useAuth } from '../../auth/authContext'
+
 type MenuItem = {
   label: string
   active?: boolean
@@ -91,6 +93,12 @@ const menuItems: MenuItem[] = [
 ]
 
 export default function CuratorRiskMonitoringPage() {
+  const { user, logout } = useAuth()
+  const assignedLearners = user?.assignedLearners ?? []
+  const firstLearner = assignedLearners[0] ?? 'Học viên A'
+  const secondLearner = assignedLearners[1] ?? 'Học viên B'
+  const thirdLearner = assignedLearners[2] ?? 'Học viên C'
+
   return (
     <div className="min-h-screen bg-[#ECEFF5] text-[#334155]">
       <main className="h-screen w-full overflow-hidden">
@@ -136,10 +144,12 @@ export default function CuratorRiskMonitoringPage() {
             </nav>
 
             <div className="mt-auto flex items-center gap-2 border-t border-[#D7DFEA] pb-3 pt-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#194698] text-[0.62rem] font-semibold text-white">JV</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#194698] text-[0.62rem] font-semibold text-white">
+                {getUserInitials(user?.fullName)}
+              </span>
               <div>
-                <p className="text-[0.68rem] font-semibold text-[#30445E]">TS. Julian Vance</p>
-                <p className="text-[0.56rem] text-[#7A8AA0]">Cố vấn trưởng</p>
+                <p className="text-[0.68rem] font-semibold text-[#30445E]">{user?.fullName ?? 'Cố vấn học thuật'}</p>
+                <p className="text-[0.56rem] text-[#7A8AA0]">Cố vấn phụ trách</p>
               </div>
             </div>
           </aside>
@@ -177,9 +187,19 @@ export default function CuratorRiskMonitoringPage() {
 
                 <div className="h-5 w-px bg-[#DAE2ED]" />
 
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="rounded-xl border border-[#CAD6E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#3F5370] transition-colors hover:bg-[#EEF4FF]"
+                >
+                  Đăng xuất
+                </button>
+
                 <button className="flex items-center gap-2">
                   <span className="text-[0.72rem] font-semibold text-[#2B4264]">Hồ sơ</span>
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#0D3D91] text-[0.64rem] font-semibold text-white">Q</span>
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#0D3D91] text-[0.64rem] font-semibold text-white">
+                    {getUserInitials(user?.fullName)}
+                  </span>
                 </button>
               </div>
             </header>
@@ -238,11 +258,11 @@ export default function CuratorRiskMonitoringPage() {
                   <p className="text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[#A15830]">Trung tâm cảnh báo</p>
                   <div className="mt-3 space-y-2.5">
                     <div className="rounded-xl border border-[#E7DCD5] bg-[#FFF9F5] px-3 py-2">
-                      <p className="text-[0.76rem] font-semibold text-[#5F3722]">3 học viên không đăng nhập 7 ngày qua</p>
+                      <p className="text-[0.76rem] font-semibold text-[#5F3722]">{firstLearner}, {secondLearner} và {thirdLearner} không đăng nhập 7 ngày qua</p>
                       <p className="mt-1 text-[0.62rem] text-[#8A6A58]">Lớp 2025 • Khoa Kỹ thuật</p>
                     </div>
                     <div className="rounded-xl border border-[#E7DCD5] bg-[#FFF9F5] px-3 py-2">
-                      <p className="text-[0.76rem] font-semibold text-[#5F3722]">Sụt giảm bất thường điểm kiểm tra nhanh</p>
+                      <p className="text-[0.76rem] font-semibold text-[#5F3722]">{firstLearner} sụt giảm bất thường điểm kiểm tra nhanh</p>
                       <p className="mt-1 text-[0.62rem] text-[#8A6A58]">Học phần: Quyền riêng tư dữ liệu</p>
                     </div>
                   </div>

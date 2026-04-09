@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+import { getUserInitials, useAuth } from '../../auth/authContext'
 import { reviewLevelWithGemini, type GeminiLevelReviewOutput, type GeminiRoadmapStep } from '../../services/geminiService'
 import type { LevelPredictionResult } from '../../services/mlService'
 
@@ -149,7 +150,8 @@ function StageSection({
 }
 
 export default function CuratorLearningPathPage() {
-  const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  const { user, logout, completeSetupStep } = useAuth()
+  const [, setSyncStatus] = useState<string | null>(null)
   const [hasSynced, setHasSynced] = useState(false)
 
   const [assessmentData, setAssessmentData] = useState<{
@@ -298,8 +300,15 @@ export default function CuratorLearningPathPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-xl border border-[#CAD6E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#3F5370] transition-colors hover:bg-[#EEF4FF]"
+            >
+              Đăng xuất
+            </button>
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0F3F95] text-[1rem] font-semibold text-white">
-              Q
+              {getUserInitials(user?.fullName)}
             </span>
           </div>
         </div>
@@ -367,7 +376,7 @@ export default function CuratorLearningPathPage() {
                 Lộ trình Phát triển Năng lực Số
               </h1>
               <p className="mt-4 max-w-[760px] text-[0.95rem] leading-[1.7] text-[#64748B]">
-                {analysis ?? 'Dựa trên kết quả đánh giá, ScholarMetric đề xuất lộ trình chi tiết giúp bạn làm chủ môi trường nghiên cứu số hiện đại.'}
+                {analysis ?? 'Dựa trên kết quả đánh giá, EdTech Enthusiasts đề xuất lộ trình chi tiết giúp bạn làm chủ môi trường nghiên cứu số hiện đại.'}
               </p>
               <p className="mt-2 text-[0.78rem] text-[#94A0B2]">
                 Bậc AI xác nhận: {finalLevel} • Độ tin cậy: {(confidence * 100).toFixed(1)}%
@@ -556,6 +565,7 @@ export default function CuratorLearningPathPage() {
               </p>
               <Link
                 to="/student-dashboard"
+                onClick={() => completeSetupStep(3)}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#0F172A] px-7 py-3 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(15,23,42,0.24)] transition-colors hover:bg-[#111827]"
               >
                 Lưu lộ trình & Tiếp tục

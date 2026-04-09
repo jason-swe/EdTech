@@ -1,3 +1,7 @@
+import { useMemo } from 'react'
+
+import { getUserInitials, useAuth } from '../../auth/authContext'
+
 type NavItem = {
   label: string
   section?: 'main' | 'admin'
@@ -20,40 +24,28 @@ type UserRow = {
   lastLogin: string
 }
 
-const users: UserRow[] = [
-  {
-    initials: 'EW',
-    name: 'Eleanor Wright',
-    email: 'eleanor.w@university.edu',
-    role: 'Học viên',
-    status: 'Hoạt động',
-    lastLogin: '2 giờ trước',
-  },
-  {
-    initials: 'MT',
-    name: 'Marcus Thorne',
-    email: 'm.thorne@academic-hub.com',
-    role: 'Cố vấn học thuật',
-    status: 'Hoạt động',
-    lastLogin: '24/10, 10:45',
-  },
-  {
-    initials: 'SC',
-    name: 'Sarah Chen',
-    email: 'schen.dev@university.edu',
-    role: 'Quản trị hệ thống',
-    status: 'Không hoạt động',
-    lastLogin: '3 tháng trước',
-  },
-  {
-    initials: 'JL',
-    name: 'James Lin',
-    email: 'james.lin@university.edu',
-    role: 'Học viên',
-    status: 'Hoạt động',
-    lastLogin: 'Hôm qua, 16:20',
-  },
-]
+function mapRoleLabel(role: 'student' | 'curator' | 'admin'): UserRow['role'] {
+  if (role === 'admin') return 'Quản trị hệ thống'
+  if (role === 'curator') return 'Cố vấn học thuật'
+  return 'Học viên'
+}
+
+function formatLastLogin(isoText: string): string {
+  const at = new Date(isoText)
+  if (Number.isNaN(at.getTime())) return 'Không xác định'
+
+  const deltaMs = Date.now() - at.getTime()
+  const deltaHours = Math.floor(deltaMs / (1000 * 60 * 60))
+  if (deltaHours < 1) return 'Vừa xong'
+  if (deltaHours < 24) return `${deltaHours} giờ trước`
+
+  return at.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 function roleBadge(role: UserRow['role']) {
   if (role === 'Học viên') {
@@ -72,6 +64,20 @@ function roleBadge(role: UserRow['role']) {
 }
 
 export default function AdminUserManagementPage() {
+  const { user, logout, getRegisteredUsers } = useAuth()
+  const users = useMemo<UserRow[]>(
+    () =>
+      getRegisteredUsers().map((item) => ({
+        initials: getUserInitials(item.fullName),
+        name: item.fullName,
+        email: item.email,
+        role: mapRoleLabel(item.role),
+        status: 'Hoạt động',
+        lastLogin: formatLastLogin(item.lastLoginAt),
+      })),
+    [getRegisteredUsers],
+  )
+
   return (
     <div className="min-h-screen bg-[#ECEFF5] text-[#334155]">
       <div className="grid min-h-screen grid-cols-[250px_1fr] bg-[#F3F6FB]">
@@ -150,11 +156,20 @@ export default function AdminUserManagementPage() {
               <div className="h-5 w-px bg-[#DAE2ED]" />
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="rounded-xl border border-[#CAD6E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#3F5370] transition-colors hover:bg-[#EEF4FF]"
+                >
+                  Đăng xuất
+                </button>
                 <div className="text-right leading-tight">
-                  <p className="text-[0.74rem] font-semibold text-[#2B4264]">TS. Julian Vance</p>
-                  <p className="text-[0.62rem] text-[#7588A1]">Quản trị hệ thống</p>
+                  <p className="text-[0.74rem] font-semibold text-[#2B4264]">{user?.fullName ?? 'Quản trị viên'}</p>
+                  <p className="text-[0.62rem] text-[#7588A1]">{user?.role === 'admin' ? 'Quản trị hệ thống' : 'Tài khoản hệ thống'}</p>
                 </div>
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F6DEC7] text-[0.62rem] font-semibold text-[#9C5A1F]">JV</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F6DEC7] text-[0.62rem] font-semibold text-[#9C5A1F]">
+                  {getUserInitials(user?.fullName)}
+                </span>
               </div>
             </div>
           </header>

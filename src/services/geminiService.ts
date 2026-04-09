@@ -114,6 +114,10 @@ const SYSTEM_PROMPT_TEMPLATE =
     '- Moi ket luan phai doi chieu tu domains, competencies, levels trong framework.',
     '- Khong tu y tao bac hoc moi, ky nang moi, hay noi dung ngoai framework.',
     '- Lo trinh thang tien phai dua tren advice va keywords trong framework.',
+    '- action_items phai la de xuat hanh dong cu the, uu tien dang du an/nhiem vu co the thuc hien ngay.',
+    '- Cam tra ve noi dung mang tinh dinh nghia chung chung (vi du: "X la gi", "Khai niem", "Mo ta ly thuyet").',
+    '- Moi action_item phai theo mau: Dong tu hanh dong + Du an/nhiem vu cu the + San pham dau ra do duoc.',
+    '- roadmap can bao phu 6 bac Bloom theo thu tu tang dan: Nho, Hieu, Van dung, Phan tich, Danh gia, Sang tao.',
     '- Tra ve DUY NHAT JSON hop le theo dung schema yeu cau, khong chen markdown, khong chen van ban ngoai JSON.',
   ].join('\n')
 
@@ -295,7 +299,7 @@ export async function reviewLevelWithGemini(input: GeminiLevelReviewInput): Prom
     const fallback = buildFallbackReview(input)
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
     const configuredModel = (import.meta.env.VITE_GEMINI_MODEL as string | undefined)?.trim()
-    const modelCandidates = [configuredModel || 'gemini-2.5-pro', 'gemini-2.5-pro', 'gemini-2.5-flash'].filter(
+    const modelCandidates = [configuredModel || 'gemini-pro-latest', 'gemini-pro-latest'].filter(
       (item, index, list) => !!item && list.indexOf(item) === index,
     ) as string[]
 
@@ -329,8 +333,11 @@ export async function reviewLevelWithGemini(input: GeminiLevelReviewInput): Prom
       '{"assessment":{"current_level":number,"summary":"string"},"roadmap":[{"step":number,"target_level":number,"action_items":["string"],"focus_keywords":["string"]}],"mentor_advice":"string"}',
       'Rang buoc bo sung:',
       '- current_level phai la so nguyen 1..8.',
-      '- roadmap la danh sach buoc nang bac tu muc hien tai len muc cao hon hop ly.',
+      '- roadmap la danh sach buoc nang bac tu muc hien tai len muc cao hon hop ly va phan bo theo 6 bac Bloom (Nho -> Sang tao).',
       '- action_items va focus_keywords phai bam sat framework, uu tien lay tu advice va keywords.',
+      '- Moi step can co toi thieu 1 action_item mang tinh du an/nhiem vu thuc te cho nguoi hoc.',
+      '- Moi action_item phai co ket qua dau ra quan sat duoc (bao cao, san pham demo, bo du lieu, slide, rubric, artifact).',
+      '- Khong viet action_item duoi dang dinh nghia, khai niem, mo ta ly thuyet chung chung.',
       '- Khong duoc tra ve bat ky truong nao khac ngoai schema tren.',
     ].join('\n\n')
 
