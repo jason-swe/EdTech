@@ -12,18 +12,26 @@ export function LoginFormPanel() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setSubmitError(null)
 
     if (!email.trim()) {
       setSubmitError('Vui lòng nhập email để đăng nhập.')
       return
     }
 
-    const currentUser = login(email, password)
-    setSubmitError(null)
-    navigate(getDefaultRoute(currentUser), { replace: true })
+    try {
+      setIsSubmitting(true)
+      const currentUser = await login(email, password)
+      navigate(getDefaultRoute(currentUser), { replace: true })
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Đăng nhập thất bại.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -180,10 +188,11 @@ export function LoginFormPanel() {
 
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-base font-semibold text-white shadow-sm transition-all hover:brightness-110 active:scale-[0.99]"
+              disabled={isSubmitting}
+              className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-base font-semibold text-white shadow-sm transition-all hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
               style={{ backgroundColor: PRIMARY }}
             >
-              Đăng nhập
+              {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
               <svg
                 className="h-5 w-5"
                 fill="none"
@@ -202,8 +211,10 @@ export function LoginFormPanel() {
 
             {submitError ? <p className="text-sm font-semibold text-[#DC2626]">{submitError}</p> : null}
             <p className="text-[0.75rem] text-[#6B7280]">
-              Mẹo demo: email chứa <span className="font-semibold">admin</span> sẽ vào trang quản trị, chứa{' '}
-              <span className="font-semibold">curator</span> sẽ vào trang giám sát rủi ro, còn lại là học viên theo flow 3 bước.
+              Mẹo demo: dùng email thật trong DB như{' '}
+              <span className="font-semibold">student@gmail.com</span>,{' '}
+              <span className="font-semibold">curator@gmail.com</span>,{' '}
+              <span className="font-semibold">admin@gmail.com</span> để vào đúng trang theo role.
             </p>
           </form>
 

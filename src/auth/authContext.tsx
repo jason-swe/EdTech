@@ -15,7 +15,7 @@ export type SessionUser = {
 type AuthContextValue = {
   user: SessionUser | null
   isAuthenticated: boolean
-  login: (email: string, password: string) => SessionUser
+  login: (email: string, password: string) => Promise<SessionUser>
   register: (fullName: string, email: string, password: string) => SessionUser
   logout: () => void
   completeSetupStep: (step: number) => void
@@ -25,7 +25,9 @@ type AuthContextValue = {
 }
 
 const SESSION_KEY = 'edtech.session.user'
+const TOKEN_KEY = 'edtech.session.token'
 const USERS_KEY = 'edtech.mock.users'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 const DEFAULT_LEARNER_NAMES = ['Trần Hoàng Nam', 'Eleanor Wright', 'Marcus Thorne', 'Sarah Chen']
 
@@ -91,6 +93,17 @@ function writeSessionUser(user: SessionUser | null) {
   }
 
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(user))
+}
+
+function writeSessionToken(token: string | null) {
+  if (typeof window === 'undefined') return
+
+  if (!token) {
+    window.localStorage.removeItem(TOKEN_KEY)
+    return
+  }
+
+  window.localStorage.setItem(TOKEN_KEY, token)
 }
 
 function seedUsers(): SessionUser[] {
@@ -169,6 +182,13 @@ function createNewSessionUser(email: string): SessionUser {
   }
 }
 
+function normalizeBackendRole(role: string): UserRole {
+  const lower = role.trim().toLowerCase()
+  if (lower === 'admin') return 'admin'
+  if (lower === 'curator') return 'curator'
+  return 'student'
+}
+
 function normalizeName(input: string): string {
   return input.trim().replace(/\s+/g, ' ')
 }
@@ -192,19 +212,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return targetUser.setupStep >= 3 ? '/student-dashboard' : getSetupRouteForProgress(targetUser.setupStep)
   }
 
-  const login = (rawEmail: string): SessionUser => {
+  const login = async (rawEmail: string): Promise<SessionUser> => {
     const email = rawEmail.trim().toLowerCase()
-    const users = readUsers()
-    const matched = users.find((item) => item.email === email)
-    const current = matched ?? createNewSessionUser(email)
+
+    let response: Response
+    try {
+      response = await fetch(`${API_BASE_URL}/api/auth/dev-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+    } catch {
+      throw new Error('Không thể kết nối backend. Hãy chạy API bằng "npm run server:dev" hoặc dùng "npm run dev" mới.')
+    }
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null
+      throw new Error(payload?.error || 'Không thể đăng nhập từ backend.')
+    }
+
+    const payload = (await response.json()) as {
+      ok: true
+      token: string
+      user: { user_id: number; full_name: string; email: string; role: string }
+    }
 
     const nextUser: SessionUser = {
-      ...current,
+      id: String(payload.user.user_id),
+      email: payload.user.email,
+      fullName: payload.user.full_name,
+      role: normalizeBackendRole(payload.user.role),
+      setupStep: payload.user.role.toLowerCase() === 'student' ? 0 : 3,
+      assignedLearners: payload.user.role.toLowerCase() === 'curator' ? DEFAULT_LEARNER_NAMES.slice(0, 3) : [],
       lastLoginAt: new Date().toISOString(),
     }
 
+    writeSessionToken(payload.token)
     writeSessionUser(nextUser)
-    writeUsers(upsertUser(users, nextUser))
     setUser(nextUser)
 
     return nextUser
@@ -235,6 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    writeSessionToken(null)
     writeSessionUser(null)
     setUser(null)
   }

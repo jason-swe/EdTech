@@ -63,12 +63,12 @@ TODO
 
 	Set `GEMINI_API_KEY` inside `.env`.
 
-3. Start backend API:
+3. Start frontend + backend together:
 
-	npm run server:dev
-
-4. Start frontend server:
 	npm run dev
+
+4. (Optional) Start backend only:
+	npm run server:dev
 
 5. Build for production:
 	npm run build
